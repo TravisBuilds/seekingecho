@@ -1,86 +1,87 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { WhaleSighting } from '@/types/sighting';
-import { format } from 'date-fns';
+import { format, eachDayOfInterval, startOfYear, endOfYear } from 'date-fns';
 
 interface TimelineProps {
   sightings: WhaleSighting[];
   onDateChange: (date: Date | undefined) => void;
 }
 
+const PLAYBACK_INTERVAL = 250; // 4x speed (1000ms / 4)
+
 const Timeline = ({ sightings, onDateChange }: TimelineProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Generate dates once when sightings change
+  const allDates = useRef(
+    sightings.length > 0
+      ? eachDayOfInterval({
+          start: startOfYear(new Date(Math.min(...sightings.map(s => new Date(s.timestamp).getTime())))),
+          end: endOfYear(new Date(Math.max(...sightings.map(s => new Date(s.timestamp).getTime()))))
+        })
+      : []
+  ).current;
 
-  // Get unique dates once
-  const dates = useMemo(() => {
-    return Array.from(new Set(
-      sightings.map(s => new Date(s.timestamp).toDateString())
-    )).map(d => new Date(d)).sort((a, b) => a.getTime() - b.getTime());
-  }, [sightings]);
+  // Move date change to useEffect
+  useEffect(() => {
+    if (allDates[currentIndex]) {
+      onDateChange(allDates[currentIndex]);
+    }
+  }, [currentIndex, allDates, onDateChange]);
 
-  // Find current index based on selected date
-  const currentIndex = useMemo(() => {
-    if (!selectedDate) return 0;
-    return Math.max(0, dates.findIndex(
-      date => date.toDateString() === selectedDate.toDateString()
-    ));
-  }, [dates, selectedDate]);
-
-  // Handle date changes
   const handleDateChange = useCallback((index: number) => {
-    const newDate = dates[index];
-    setSelectedDate(newDate);
-    onDateChange(newDate);
-  }, [dates, onDateChange]);
+    setCurrentIndex(index);
+  }, []);
 
   // Handle playback
   useEffect(() => {
-    if (!isPlaying || dates.length === 0) return;
+    if (!isPlaying || allDates.length === 0) {
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
+      }
+      return;
+    }
 
-    const interval = setInterval(() => {
-      const nextIndex = (currentIndex + 1) % dates.length;
-      handleDateChange(nextIndex);
-    }, 1000 / playbackSpeed);
+    const playStep = () => {
+      setCurrentIndex(prevIndex => (prevIndex + 1) % allDates.length);
+      playTimeoutRef.current = setTimeout(playStep, PLAYBACK_INTERVAL);
+    };
 
-    return () => clearInterval(interval);
-  }, [isPlaying, playbackSpeed, dates, currentIndex, handleDateChange]);
+    playTimeoutRef.current = setTimeout(playStep, PLAYBACK_INTERVAL);
+
+    return () => {
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
+      }
+    };
+  }, [isPlaying, allDates.length]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <button 
-          onClick={() => setIsPlaying(prev => !prev)}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          {isPlaying ? 'Pause' : 'Play'}
-        </button>
+    <div className="w-full px-16 flex items-center">
+      <button 
+        onClick={() => setIsPlaying(prev => !prev)}
+        className="w-12 h-12 rounded-full bg-black flex items-center justify-center mr-6 shrink-0"
+      >
+        {isPlaying ? (
+          <span className="text-white text-2xl">⏸</span>
+        ) : (
+          <span className="text-white text-2xl">▶</span>
+        )}
+      </button>
 
+      <div className="flex-1 h-3 bg-white/80 backdrop-blur-sm rounded-full shadow-lg">
         <input 
           type="range"
           min={0}
-          max={dates.length - 1}
+          max={allDates.length - 1}
           value={currentIndex}
           onChange={(e) => handleDateChange(parseInt(e.target.value))}
-          className="flex-1 mx-4"
+          className="w-full h-full appearance-none bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-black"
         />
-
-        <select 
-          value={playbackSpeed}
-          onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
-          className="p-2 border rounded"
-        >
-          <option value={0.5}>0.5x</option>
-          <option value={1}>1x</option>
-          <option value={2}>2x</option>
-          <option value={4}>4x</option>
-        </select>
-      </div>
-
-      <div className="text-center text-sm">
-        {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select a date'}
       </div>
     </div>
   );

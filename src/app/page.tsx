@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import MapContainer from '@/components/Map/MapContainer';
-import FilterPanel from '@/components/Filters/FilterPanel';
 import IndividualFilter from '@/components/Filters/IndividualFilter';
 import Timeline from '@/components/Timeline/Timeline';
 import { WhaleSighting } from '@/types/sighting';
@@ -12,7 +11,6 @@ export default function Home() {
   const [sightings, setSightings] = useState<WhaleSighting[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedIndividuals, setSelectedIndividuals] = useState<string[]>([]);
-  const [showPaths, setShowPaths] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,57 +24,58 @@ export default function Home() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-2xl">Loading sighting data...</div>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
+  // Add console.log to check if sightings data is available
+  console.log('Sightings data:', sightings);
+
   return (
-    <div className="flex flex-col h-screen">
-      <header className="bg-blue-900 text-white p-4">
-        <h1 className="text-2xl font-bold">Seeking Echo</h1>
-        <p className="text-sm">T18 Matriline Whale Tracking</p>
-      </header>
-      
-      <div className="flex flex-1 h-[calc(100vh-4rem)]">
-        <aside className="w-80 bg-white shadow-lg p-4 overflow-y-auto">
-          <div className="space-y-6">
-            <IndividualFilter 
-              sightings={sightings}
-              onFilterChange={setSelectedIndividuals}
-            />
-            <div>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={showPaths}
-                  onChange={(e) => setShowPaths(e.target.checked)}
-                  className="form-checkbox h-4 w-4 text-blue-600"
-                />
-                <span>Show Movement Paths</span>
-              </label>
-            </div>
-          </div>
-        </aside>
-        
-        <main className="flex-1 relative flex flex-col">
-          <div className="flex-1">
-            <MapContainer 
-              sightings={sightings}
-              selectedDate={selectedDate}
-              selectedIndividuals={selectedIndividuals}
-              showPaths={showPaths}
-            />
-          </div>
-          <div className="h-24 bg-white/90 p-4">
-            <Timeline 
-              sightings={sightings}
-              onDateChange={setSelectedDate}
-            />
-          </div>
-        </main>
+    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+      {/* Map Base Layer */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+        <MapContainer 
+          sightings={sightings}
+          selectedDate={selectedDate}
+          selectedIndividuals={selectedIndividuals}
+          showPaths={true}
+        />
+      </div>
+
+      {/* UI Overlay Layer */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        {/* Whale Selector - top right */}
+        <div style={{ 
+          position: 'absolute', 
+          top: '1rem', 
+          right: '1rem', 
+          pointerEvents: 'auto',
+          zIndex: 1000
+        }}>
+          {/* Add debug render to verify component is being rendered */}
+          <div className="text-white">Debug: Whale Selector</div>
+          <IndividualFilter 
+            sightings={sightings}
+            onFilterChange={setSelectedIndividuals}
+          />
+        </div>
+
+        {/* Timeline - bottom center */}
+        <div style={{ 
+          position: 'absolute', 
+          bottom: '2rem', 
+          left: '50%', 
+          transform: 'translateX(-50%)',
+          width: '80%',
+          maxWidth: '600px',
+          pointerEvents: 'auto',
+          zIndex: 1000
+        }}>
+          <Timeline 
+            sightings={sightings}
+            onDateChange={setSelectedDate}
+          />
+        </div>
       </div>
     </div>
   );

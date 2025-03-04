@@ -1,13 +1,123 @@
+/* Remove ABC Marfa font faces and add Nunito from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Basic styles */
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-rgb: 255, 255, 255;
 }
 
+html, body {
+  background-color: white;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
+  background: white;
+  font-family: "Nunito", sans-serif;
+  font-optical-sizing: auto;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  min-height: 100vh;
+}
+
+/* Mobile container styles */
+#__next {
+  width: 390px;
+  height: 100vh;
+  position: relative;
+  background-color: white;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Content container */
+.intro-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-image: url('/images/background1.png');
+  background-size: cover;
+  background-position: center;
+}
+
+/* Mobile viewport styles */
+@media (min-width: 390px) {
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 844px; /* Ensure minimum height for the container */
+  }
+
+  #__next {
+    width: 390px;
+    height: 844px;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Background image styles for intro screen */
+.intro-container {
+  width: 390px;
+  height: 844px;
+  position: relative;
+  background-image: url('/images/background1.png');
+  background-size: cover;
+  background-position: center;
+}
+
+/* Remove the ABC Marfa class and add Nunito utilities */
+.font-nunito {
+  font-family: "Nunito", sans-serif;
+  font-optical-sizing: auto;
+}
+
+/* Add this to move the Turbopack indicator */
+#__next-build-watcher {
+  position: fixed !important;
+  bottom: 10px !important;
+  right: 10px !important;
+  top: auto !important;
+  left: auto !important;
+}
+
+/* Add these styles for the map container */
+.map-container {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 0;
+}
+
+.map-container > div {
+  z-index: 0;
+}
+
+.ui-layer {
+  z-index: 1;
+}
+
+/* Style the marker labels */
+.marker-label {
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
 } 
