@@ -1,6 +1,10 @@
 'use client';
 
+import { FormControl, Select, MenuItem, Box } from '@mui/material';
 import { WhaleSighting } from '@/types/sighting';
+import { WavesRounded } from '@mui/icons-material';
+import Image from 'next/image';
+import { useState } from 'react';
 
 interface IndividualFilterProps {
   sightings: WhaleSighting[];
@@ -8,28 +12,108 @@ interface IndividualFilterProps {
 }
 
 const IndividualFilter = ({ sightings, onFilterChange }: IndividualFilterProps) => {
-  // Get unique matrilines
-  const uniqueMatrilines = Array.from(
-    new Set(
-      sightings.flatMap(sighting => sighting.matrilines)
-    )
-  ).sort();
+  const [selectedValue, setSelectedValue] = useState("");
+  const uniqueMatrilines = ['T18', 'T19'];
+
+  const getIcon = (matriline: string) => {
+    switch (matriline) {
+      case 'T18':
+        return <Image src="/images/orca-icon.png" alt="T18" width={24} height={24} />;
+      case 'T19':
+        return <Image src="/images/orca-icon2.png" alt="T19" width={24} height={24} />;
+      default:
+        return (
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            <Image src="/images/orca-icon.png" alt="T18" width={24} height={24} />
+            <Image src="/images/orca-icon2.png" alt="T19" width={24} height={24} />
+          </Box>
+        );
+    }
+  };
 
   return (
-    <div className="relative" style={{ zIndex: 1000 }}>
-      <select 
-        className="appearance-none px-6 py-3 bg-white rounded-full border shadow-lg text-lg min-w-[200px]"
-        onChange={(e) => onFilterChange([e.target.value])}
-        value=""
+    <FormControl>
+      <Select
+        value={selectedValue}
+        onChange={(e) => {
+          const value = e.target.value as string;
+          setSelectedValue(value);
+          const selectedValues = value === 'T18' 
+            ? sightings.flatMap(s => s.matrilines).filter(m => m.startsWith('T18'))
+            : value === 'T19'
+              ? sightings.flatMap(s => s.matrilines).filter(m => m.startsWith('T19'))
+              : value === ""  // When "All Whales" is selected
+                ? sightings.flatMap(s => s.matrilines).filter(m => 
+                    m.startsWith('T18') || m.startsWith('T19')
+                  )
+                : [value];
+          onFilterChange(selectedValues);
+        }}
+        displayEmpty
+        renderValue={(value) => (
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            gap: 1
+          }}>
+            {getIcon(value as string)}
+            <span>{value === "" ? "All Whales" : value}</span>
+          </Box>
+        )}
+        sx={{
+          bgcolor: 'white',
+          borderRadius: '50px',
+          minWidth: 200,
+          height: 48,
+          boxShadow: 3,
+          '.MuiOutlinedInput-notchedOutline': { 
+            borderRadius: '50px',
+            borderColor: 'transparent'
+          },
+          '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'transparent'
+          },
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'transparent'
+          },
+          '.MuiSelect-select': { 
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            py: 1.5,
+            px: 2
+          }
+        }}
+        MenuProps={{
+          PaperProps: {
+            sx: {
+              borderRadius: 3,
+              mt: 1,
+              boxShadow: 3
+            }
+          }
+        }}
       >
-        <option value="">All Whales</option>
+        <MenuItem value="">
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <WavesRounded />
+            <span>All Whales</span>
+          </Box>
+        </MenuItem>
         {uniqueMatrilines.map(matriline => (
-          <option key={matriline} value={matriline}>
-            {matriline}
-          </option>
+          <MenuItem 
+            key={matriline} 
+            value={matriline}
+            sx={{ py: 1.5, px: 2 }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {getIcon(matriline)}
+              <span>{matriline}</span>
+            </Box>
+          </MenuItem>
         ))}
-      </select>
-    </div>
+      </Select>
+    </FormControl>
   );
 };
 

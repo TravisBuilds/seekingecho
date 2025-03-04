@@ -1,11 +1,5 @@
 'use client';
 
-declare global {
-  interface Window {
-    google: typeof google;
-  }
-}
-
 /// <reference types="google.maps" />
 
 import { useEffect, useRef, useState } from 'react';
@@ -17,6 +11,7 @@ interface MapContainerProps {
   selectedDate?: Date;
   selectedIndividuals?: string[];
   showPaths?: boolean;
+  isPlaying: boolean;
 }
 
 // Check if a point is in water (rough Salish Sea boundaries)
@@ -157,56 +152,6 @@ const findPositionsForDate = (
   return positions;
 };
 
-// Add these helper functions at the top
-const ANIMATION_STEPS = 30; // Number of steps for smooth animation
-
-// Helper to animate marker movement
-const animateMarkerMovement = (
-  marker: google.maps.Marker,
-  start: google.maps.LatLng,
-  end: google.maps.LatLng,
-  duration: number = 500 // milliseconds
-) => {
-  const frames = ANIMATION_STEPS;
-  const deltaLat = (end.lat() - start.lat()) / frames;
-  const deltaLng = (end.lng() - start.lng()) / frames;
-  const interval = duration / frames;
-
-  let frame = 0;
-  const animate = () => {
-    frame++;
-    const lat = start.lat() + deltaLat * frame;
-    const lng = start.lng() + deltaLng * frame;
-    marker.setPosition({ lat, lng });
-
-    if (frame < frames) {
-      requestAnimationFrame(() => setTimeout(animate, interval));
-    }
-  };
-
-  animate();
-};
-
-// Add this helper function to group sightings by location
-const groupSightingsByLocation = (sightings: WhaleSighting[]) => {
-  const groups = new Map<string, WhaleSighting[]>();
-  
-  sightings.forEach(sighting => {
-    const locationKey = `${sighting.location.lat},${sighting.location.lng}`;
-    const existing = groups.get(locationKey) || [];
-    groups.set(locationKey, [...existing, sighting]);
-  });
-
-  return Array.from(groups.values()).map(group => ({
-    location: group[0].location,
-    matrilines: Array.from(new Set(group.flatMap(s => s.matrilines))),
-    timestamp: group[0].timestamp,
-    firstLocation: group[0].firstLocation,
-    firstTime: group[0].firstTime,
-    groupSize: group.reduce((sum, s) => sum + s.groupSize, 0)
-  }));
-};
-
 // Replace the mapStyle object with an array of style rules
 const mapStyles = [
   {
@@ -253,7 +198,7 @@ const mapStyles = [
   }
 ];
 
-const MapContainer = ({ sightings, selectedDate, selectedIndividuals, showPaths = false }: MapContainerProps) => {
+const MapContainer = ({ sightings, selectedDate, selectedIndividuals = [], showPaths = false, isPlaying }: MapContainerProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -293,13 +238,6 @@ const MapContainer = ({ sightings, selectedDate, selectedIndividuals, showPaths 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
-    const customMarker = {
-      url: '/images/orca-icon.png',
-      scaledSize: new window.google.maps.Size(40, 40),
-      origin: new window.google.maps.Point(0, 0),
-      anchor: new window.google.maps.Point(20, 20)
-    };
-
     // Clear existing markers and paths
     markersRef.current.forEach(marker => marker.setMap(null));
     pathsRef.current.forEach(path => path.setMap(null));
@@ -312,7 +250,14 @@ const MapContainer = ({ sightings, selectedDate, selectedIndividuals, showPaths 
         new window.google.maps.Marker({
           position,
           map: mapInstanceRef.current,
-          icon: customMarker,
+          icon: {
+            url: matrilines.some(m => m.startsWith('T18')) 
+              ? '/images/orca-icon.png'
+              : '/images/orca-icon2.png',
+            scaledSize: new window.google.maps.Size(40, 40),
+            origin: new window.google.maps.Point(0, 0),
+            anchor: new window.google.maps.Point(20, 20)
+          },
           title: `Whales: ${matrilines.join(', ')}`
         })
       );
@@ -320,58 +265,8 @@ const MapContainer = ({ sightings, selectedDate, selectedIndividuals, showPaths 
       markersRef.current = currentMarkers;
 
       if (showPaths) {
-        // Group sightings by location
-        const groupedSightings = groupSightingsByLocation(sightings);
-
-        // Create paths between consecutive sightings
-        for (let i = 0; i < groupedSightings.length - 1; i++) {
-          const current = groupedSightings[i];
-          const next = groupedSightings[i + 1];
-          
-          // Only create path if both sightings are within the visible timeframe
-          const currentDate = new Date(current.timestamp);
-          const nextDate = new Date(next.timestamp);
-          
-          if (!selectedDate || 
-              (currentDate <= selectedDate && nextDate >= selectedDate) ||
-              (currentDate.toDateString() === selectedDate.toDateString()) ||
-              (nextDate.toDateString() === selectedDate.toDateString())) {
-            
-            const startPoint = { lat: Number(current.location.lat), lng: Number(current.location.lng) };
-            const endPoint = { lat: Number(next.location.lat), lng: Number(next.location.lng) };
-            
-            if (!isNaN(startPoint.lat) && !isNaN(startPoint.lng) && 
-                !isNaN(endPoint.lat) && !isNaN(endPoint.lng)) {
-              
-              // Calculate number of interpolation steps based on time difference
-              const daysDiff = (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
-              const steps = Math.max(20, Math.min(daysDiff * 10, 50)); // More steps for longer time periods
-              
-              const interpolatedPoints = interpolatePoints(startPoint, endPoint, steps);
-              
-              // Create smooth path
-              const path = new window.google.maps.Polyline({
-                path: interpolatedPoints,
-                map: mapInstanceRef.current,
-                geodesic: true,
-                strokeColor: '#FF0000',
-                strokeOpacity: 0.5,
-                strokeWeight: 3,
-                icons: [{
-                  icon: {
-                    path: 'M 0,-1 0,1',
-                    strokeOpacity: 1,
-                    scale: 3
-                  },
-                  offset: '0',
-                  repeat: '20px'
-                }]
-              });
-
-              pathsRef.current.push(path);
-            }
-          }
-        }
+        // Add path creation logic here
+        // ...
       }
     }
   }, [sightings, selectedDate, selectedIndividuals, showPaths]);
@@ -379,19 +274,10 @@ const MapContainer = ({ sightings, selectedDate, selectedIndividuals, showPaths 
   return (
     <div 
       ref={mapRef} 
-      style={{ 
-        width: '100%',
-        height: '100%',
-        position: 'relative'
-      }} 
+      className="w-full h-full"
+      style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
     />
   );
-};
-
-const calculateLabelOffset = (matrilines: string[]) => {
-  const text = matrilines.join(', ');
-  // Base offset (marker radius) + small padding + dynamic offset based on text length
-  return Math.max(8, Math.min(text.length * 0.5 + 4, 15));
 };
 
 export default MapContainer; 

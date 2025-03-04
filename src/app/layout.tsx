@@ -1,12 +1,27 @@
-import type { Metadata } from "next";
+'use client';
+
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  description: "Interactive visualization of T18 matriline Bigg's killer whales in the Salish Sea region",
-};
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#000000',
+    },
+  },
+  components: {
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          borderRadius: '50px',
+        },
+      },
+    },
+  },
+});
 
 export default function RootLayout({
   children,
@@ -15,9 +30,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        {children}
+      <body className={inter.className}>
+        <ThemeProvider theme={theme}>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
-  )
+  );
 } 

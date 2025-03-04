@@ -1,18 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Slider, Box } from '@mui/material';
 import { WhaleSighting } from '@/types/sighting';
 import { format, eachDayOfInterval, startOfYear, endOfYear } from 'date-fns';
 
 interface TimelineProps {
   sightings: WhaleSighting[];
   onDateChange: (date: Date | undefined) => void;
+  isPlaying: boolean;
 }
 
 const PLAYBACK_INTERVAL = 250; // 4x speed (1000ms / 4)
 
-const Timeline = ({ sightings, onDateChange }: TimelineProps) => {
-  const [isPlaying, setIsPlaying] = useState(false);
+const Timeline = ({ sightings, onDateChange, isPlaying }: TimelineProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -61,29 +62,37 @@ const Timeline = ({ sightings, onDateChange }: TimelineProps) => {
   }, [isPlaying, allDates.length]);
 
   return (
-    <div className="w-full px-16 flex items-center">
-      <button 
-        onClick={() => setIsPlaying(prev => !prev)}
-        className="w-12 h-12 rounded-full bg-black flex items-center justify-center mr-6 shrink-0"
-      >
-        {isPlaying ? (
-          <span className="text-white text-2xl">⏸</span>
-        ) : (
-          <span className="text-white text-2xl">▶</span>
-        )}
-      </button>
-
-      <div className="flex-1 h-3 bg-white/80 backdrop-blur-sm rounded-full shadow-lg">
-        <input 
-          type="range"
-          min={0}
-          max={allDates.length - 1}
-          value={currentIndex}
-          onChange={(e) => handleDateChange(parseInt(e.target.value))}
-          className="w-full h-full appearance-none bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-black"
-        />
+    <Box className="w-full px-16" sx={{ marginBottom: '5%' }}>
+      <Box className="relative h-6">
+        <Box className="absolute inset-x-0 bg-white/80 backdrop-blur-sm rounded-full shadow-lg h-full flex items-center">
+          <Slider
+            min={0}
+            max={allDates.length - 1}
+            value={currentIndex}
+            onChange={(_, value) => handleDateChange(value as number)}
+            sx={{
+              padding: '4px 12px !important',
+              '& .MuiSlider-thumb': {
+                width: 12,
+                height: 12,
+                bgcolor: 'black',
+              },
+              '& .MuiSlider-track': {
+                bgcolor: 'black',
+                height: 2,
+              },
+              '& .MuiSlider-rail': {
+                bgcolor: 'rgba(0,0,0,0.2)',
+                height: 2,
+              }
+            }}
+          />
+        </Box>
+      </Box>
+      <div className="text-center mt-2 text-sm font-medium text-gray-600">
+        {allDates[currentIndex] ? format(allDates[currentIndex], 'MMMM d, yyyy') : ''}
       </div>
-    </div>
+    </Box>
   );
 };
 

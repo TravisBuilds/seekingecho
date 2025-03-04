@@ -12,6 +12,7 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedIndividuals, setSelectedIndividuals] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,6 +24,20 @@ export default function Home() {
     fetchData();
   }, []);
 
+  // Start autoplay when selection changes
+  useEffect(() => {
+    if (selectedIndividuals.length > 0) {
+      setIsPlaying(true);
+    }
+  }, [selectedIndividuals]);
+
+  // Handle click anywhere to toggle play/pause
+  const handleGlobalClick = () => {
+    if (selectedIndividuals.length > 0) {
+      setIsPlaying(prev => !prev);
+    }
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -31,7 +46,10 @@ export default function Home() {
   console.log('Sightings data:', sightings);
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+    <div 
+      onClick={handleGlobalClick}
+      style={{ width: '100vw', height: '100vh', position: 'relative' }}
+    >
       {/* Map Base Layer */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
         <MapContainer 
@@ -39,11 +57,15 @@ export default function Home() {
           selectedDate={selectedDate}
           selectedIndividuals={selectedIndividuals}
           showPaths={true}
+          isPlaying={isPlaying}
         />
       </div>
 
       {/* UI Overlay Layer */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      <div 
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+        onClick={e => e.stopPropagation()} // Prevent clicks on UI from triggering play/pause
+      >
         {/* Whale Selector - top right */}
         <div style={{ 
           position: 'absolute', 
@@ -53,7 +75,7 @@ export default function Home() {
           zIndex: 1000
         }}>
           {/* Add debug render to verify component is being rendered */}
-          <div className="text-white">Debug: Whale Selector</div>
+          {/* <div className="text-white">Debug: Whale Selector</div> */}
           <IndividualFilter 
             sightings={sightings}
             onFilterChange={setSelectedIndividuals}
@@ -74,6 +96,7 @@ export default function Home() {
           <Timeline 
             sightings={sightings}
             onDateChange={setSelectedDate}
+            isPlaying={isPlaying}
           />
         </div>
       </div>
