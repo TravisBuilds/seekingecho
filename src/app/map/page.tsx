@@ -7,7 +7,7 @@ import Timeline from '@/components/Timeline/Timeline';
 import { WhaleSighting } from '@/types/sighting';
 import { loadAllSightings } from '@/services/utils/yearlyDataLoader';
 
-export default function Home() {
+export default function MapPage() {
   const [sightings, setSightings] = useState<WhaleSighting[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedIndividuals, setSelectedIndividuals] = useState<string[]>([]);
@@ -42,16 +42,13 @@ export default function Home() {
     return <div>Loading...</div>;
   }
 
-  // Add console.log to check if sightings data is available
-  console.log('Sightings data:', sightings);
-
   return (
     <div 
       onClick={handleGlobalClick}
-      className="map-page"
+      className="w-screen h-screen relative overflow-hidden"
     >
       {/* Map Base Layer */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+      <div className="absolute inset-0">
         <MapContainer 
           sightings={sightings}
           selectedDate={selectedDate}
@@ -64,19 +61,11 @@ export default function Home() {
 
       {/* UI Overlay Layer */}
       <div 
-        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
-        onClick={e => e.stopPropagation()} // Prevent clicks on UI from triggering play/pause
+        className="absolute inset-0 pointer-events-none"
+        onClick={e => e.stopPropagation()}
       >
         {/* Whale Selector - top right */}
-        <div style={{ 
-          position: 'absolute', 
-          top: '1rem', 
-          right: '1rem', 
-          pointerEvents: 'auto',
-          zIndex: 1000
-        }}>
-          {/* Add debug render to verify component is being rendered */}
-          {/* <div className="text-white">Debug: Whale Selector</div> */}
+        <div className="absolute top-4 right-4 pointer-events-auto z-10">
           <IndividualFilter 
             sightings={sightings}
             onFilterChange={setSelectedIndividuals}
@@ -84,16 +73,7 @@ export default function Home() {
         </div>
 
         {/* Timeline - bottom center */}
-        <div style={{ 
-          position: 'absolute', 
-          bottom: '2rem', 
-          left: '50%', 
-          transform: 'translateX(-50%)',
-          width: '80%',
-          maxWidth: '600px',
-          pointerEvents: 'auto',
-          zIndex: 1000
-        }}>
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-4/5 max-w-2xl pointer-events-auto z-10">
           <Timeline 
             sightings={sightings}
             onDateChange={setSelectedDate}

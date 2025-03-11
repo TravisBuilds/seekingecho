@@ -19,10 +19,10 @@
 }
 
 html, body {
-  background-color: white;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
+  background: white;
 }
 
 body {
@@ -30,79 +30,25 @@ body {
   background: white;
   font-family: "Nunito", sans-serif;
   font-optical-sizing: auto;
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-  min-height: 100vh;
-}
-
-/* Mobile container styles */
-#__next {
-  width: 390px;
-  height: 100vh;
   position: relative;
-  background-color: white;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Content container */
-.intro-container {
+/* Map page specific styles */
+.map-page {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+/* Map container styles */
+.map-container {
   width: 100%;
   height: 100%;
-  position: relative;
-  background-image: url('/images/background1.png');
-  background-size: cover;
-  background-position: center;
-}
-
-/* Mobile viewport styles */
-@media (min-width: 390px) {
-  body {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 844px; /* Ensure minimum height for the container */
-  }
-
-  #__next {
-    width: 390px;
-    height: 844px;
-    border-left: 1px solid rgba(255, 255, 255, 0.1);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
-  }
-}
-
-/* Background image styles for intro screen */
-.intro-container {
-  width: 390px;
-  height: 844px;
-  position: relative;
-  background-image: url('/images/background1.png');
-  background-size: cover;
-  background-position: center;
-}
-
-/* Remove the ABC Marfa class and add Nunito utilities */
-.font-nunito {
-  font-family: "Nunito", sans-serif;
-  font-optical-sizing: auto;
-}
-
-/* Add this to move the Turbopack indicator */
-#__next-build-watcher {
-  position: fixed !important;
-  bottom: 10px !important;
-  right: 10px !important;
-  top: auto !important;
-  left: auto !important;
-}
-
-/* Add these styles for the map container */
-.map-container {
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  position: absolute;
+  top: 0;
+  left: 0;
   z-index: 0;
 }
 
@@ -120,4 +66,36 @@ body {
   padding: 2px 6px;
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Keep intro page styles separate */
+.intro-container {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  background-image: url('/images/background1.png');
+  background-size: cover;
+  background-position: center;
+}
+
+/* Remove mobile viewport styles that might be causing issues */
+@media (min-width: 390px) {
+  body {
+    min-height: 100vh;
+  }
+}
+
+/* Add this to move the Turbopack indicator */
+#__next-build-watcher {
+  position: fixed !important;
+  bottom: 10px !important;
+  right: 10px !important;
+  top: auto !important;
+  left: auto !important;
+}
+
+/* Remove the ABC Marfa class and add Nunito utilities */
+.font-nunito {
+  font-family: "Nunito", sans-serif;
+  font-optical-sizing: auto;
 } 

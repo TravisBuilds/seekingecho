@@ -2,16 +2,24 @@
 
 /// <reference types="google.maps" />
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 import { WhaleSighting } from '@/types/sighting';
+import { mapStyles } from './mapStyles';
 
 interface MapContainerProps {
   sightings: WhaleSighting[];
-  selectedDate?: Date;
-  selectedIndividuals?: string[];
-  showPaths?: boolean;
+  selectedDate: Date | undefined;
+  selectedIndividuals: string[];
+  showPaths: boolean;
   isPlaying: boolean;
+  onDateChange: (date: Date) => void;
+}
+
+interface Position {
+  position: google.maps.LatLngLiteral;
+  matrilines: string[];
+  isActualSighting: boolean;
 }
 
 // Check if a point is in water (rough Salish Sea boundaries)
@@ -70,7 +78,29 @@ const interpolatePoints = (
   return points;
 };
 
-// Update the findPositionForDate function to handle multiple whales
+// Add a type for valid matrilines
+type Matriline = 'T18' | 'T19' | 'OTHER';
+
+// Helper function to determine matriline type
+const getMatrilineType = (matrilines: string[]): Matriline => {
+  if (matrilines.some(m => m.startsWith('T18'))) return 'T18';
+  if (matrilines.some(m => m.startsWith('T19'))) return 'T19';
+  return 'OTHER';
+};
+
+// Get icon URL based on matriline type
+const getIconUrl = (matrilineType: Matriline): string => {
+  switch (matrilineType) {
+    case 'T18':
+      return '/images/orca-icon.png';
+    case 'T19':
+      return '/images/orca-icon2.png';
+    default:
+      return '/images/orca-icon3.png';
+  }
+};
+
+// Update the findPositionsForDate function to filter out land positions
 const findPositionsForDate = (
   date: Date,
   sightings: WhaleSighting[],
@@ -80,202 +110,208 @@ const findPositionsForDate = (
   matrilines: string[];
   isActualSighting: boolean;
 }> => {
-  // Group sightings by matriline
-  const matrilineGroups = new Map<string, WhaleSighting[]>();
-  
-  sightings.forEach(sighting => {
-    sighting.matrilines.forEach(matriline => {
-      const existing = matrilineGroups.get(matriline) || [];
-      matrilineGroups.set(matriline, [...existing, sighting]);
-    });
-  });
-
-  // For each matriline, find its position on the given date
-  const positions: Array<{
+  const dateStr = date.toDateString();
+  const positions = new Map<string, {
     position: { lat: number; lng: number };
     matrilines: string[];
     isActualSighting: boolean;
-  }> = [];
+  }>();
 
-  // Process all matrilines if none selected, otherwise only process selected ones
-  const matrilinesToProcess = selectedIndividuals.length > 0 
-    ? selectedIndividuals 
-    : Array.from(matrilineGroups.keys());
+  // Filter sightings for selected individuals
+  const filteredSightings = selectedIndividuals.length > 0
+    ? sightings.filter(s => {
+        return s.matrilines.some(m => selectedIndividuals.includes(m)) &&
+               isInWater(s.location.lat, s.location.lng); // Check if in water
+      })
+    : sightings.filter(s => isInWater(s.location.lat, s.location.lng)); // Check if in water
 
-  matrilinesToProcess.forEach(matriline => {
-    const matrilineSightings = matrilineGroups.get(matriline) || [];
-    if (matrilineSightings.length === 0) return;
+  // Process exact matches first
+  const exactMatches = filteredSightings.filter(s => 
+    new Date(s.timestamp).toDateString() === dateStr
+  );
 
-    // Sort sightings by date
-    matrilineSightings.sort((a, b) => 
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    );
+  // Process exact matches first
+  exactMatches.forEach(sighting => {
+    // Only process matrilines that are selected (or all if none selected)
+    const relevantMatrilines = selectedIndividuals.length > 0
+      ? sighting.matrilines.filter(m => selectedIndividuals.includes(m))
+      : sighting.matrilines;
 
-    // Find surrounding sightings
-    const exactSighting = matrilineSightings.find(s => 
-      new Date(s.timestamp).toDateString() === date.toDateString()
-    );
+    relevantMatrilines.forEach(matriline => {
+      const familyKey = matriline.startsWith('T18') ? 'T18' : 
+                       matriline.startsWith('T19') ? 'T19' : 'OTHER';
 
-    if (exactSighting) {
-      positions.push({
-        position: exactSighting.location,
-        matrilines: exactSighting.matrilines,
-        isActualSighting: true
-      });
-      return;
-    }
-
-    const prevSighting = matrilineSightings
-      .filter(s => new Date(s.timestamp) <= date)
-      .pop();
-    const nextSighting = matrilineSightings
-      .find(s => new Date(s.timestamp) > date);
-
-    if (!prevSighting || !nextSighting) return;
-
-    // Calculate interpolated position
-    const prevTime = new Date(prevSighting.timestamp).getTime();
-    const nextTime = new Date(nextSighting.timestamp).getTime();
-    const currentTime = date.getTime();
-    
-    const fraction = (currentTime - prevTime) / (nextTime - prevTime);
-    const points = interpolatePoints(prevSighting.location, nextSighting.location, 20);
-    const index = Math.floor(fraction * points.length);
-    
-    positions.push({
-      position: points[Math.min(index, points.length - 1)],
-      matrilines: [matriline],
-      isActualSighting: false
+      if (!positions.has(familyKey)) {
+        positions.set(familyKey, {
+          position: sighting.location,
+          matrilines: [matriline],
+          isActualSighting: true
+        });
+      }
     });
   });
 
-  return positions;
+  // For interpolation, ensure all points are in water
+  const familiesToProcess = selectedIndividuals.length > 0
+    ? [...new Set(selectedIndividuals.map(m => m.startsWith('T18') ? 'T18' : 
+                                             m.startsWith('T19') ? 'T19' : 'OTHER'))]
+    : ['T18', 'T19', 'OTHER'];
+
+  familiesToProcess.forEach(family => {
+    if (positions.has(family)) return;
+
+    const familySightings = filteredSightings
+      .filter(s => s.matrilines.some(m => 
+        family === 'T18' ? m.startsWith('T18') :
+        family === 'T19' ? m.startsWith('T19') :
+        (!m.startsWith('T18') && !m.startsWith('T19'))
+      ))
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    const prevSighting = familySightings
+      .filter(s => new Date(s.timestamp) <= date)
+      .pop();
+    const nextSighting = familySightings
+      .find(s => new Date(s.timestamp) > date);
+
+    if (prevSighting && nextSighting) {
+      const prevTime = new Date(prevSighting.timestamp).getTime();
+      const nextTime = new Date(nextSighting.timestamp).getTime();
+      const currentTime = date.getTime();
+      
+      const fraction = (currentTime - prevTime) / (nextTime - prevTime);
+      const points = interpolatePoints(prevSighting.location, nextSighting.location, 20);
+      const index = Math.floor(fraction * points.length);
+      
+      const interpolatedPosition = points[Math.min(index, points.length - 1)];
+      
+      // Only add the position if it's in water
+      if (isInWater(interpolatedPosition.lat, interpolatedPosition.lng)) {
+        positions.set(family, {
+          position: interpolatedPosition,
+          matrilines: familySightings[0].matrilines.filter(m => m.startsWith(family)),
+          isActualSighting: false
+        });
+      }
+    }
+  });
+
+  return Array.from(positions.values());
 };
 
-// Replace the mapStyle object with an array of style rules
-const mapStyles = [
-  {
-    // Water styling
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [
-      { color: '#b3d1ff' }  // Light blue water
-    ]
-  },
-  {
-    // Land styling
-    featureType: 'landscape',
-    elementType: 'geometry',
-    stylers: [
-      { color: '#f5f5f5' }  // Light gray land
-    ]
-  },
-  {
-    // Remove road labels
-    featureType: 'road',
-    elementType: 'labels',
-    stylers: [{ visibility: 'off' }]
-  },
-  {
-    // Simplify roads
-    featureType: 'road',
-    elementType: 'geometry',
-    stylers: [
-      { visibility: 'simplified' },
-      { color: '#ffffff' }
-    ]
-  },
-  {
-    // Remove POIs
-    featureType: 'poi',
-    stylers: [{ visibility: 'off' }]
-  },
-  {
-    // Administrative boundaries
-    featureType: 'administrative',
-    elementType: 'geometry',
-    stylers: [{ visibility: 'simplified' }]
-  }
-];
-
-const MapContainer = ({ sightings, selectedDate, selectedIndividuals = [], showPaths = false, isPlaying }: MapContainerProps) => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
-  const pathsRef = useRef<any[]>([]);
+const MapContainer = ({ 
+  sightings, 
+  selectedDate, 
+  selectedIndividuals = [], 
+  showPaths = false, 
+  isPlaying,
+  onDateChange 
+}: MapContainerProps) => {
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const animationFrameRef = useRef<number | null>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
 
   // Initial map setup
   useEffect(() => {
-    if (!mapRef.current) return;
-
     const loader = new Loader({
       apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
       version: 'weekly',
     });
 
-    loader.load().then(() => {
-      const map = new window.google.maps.Map(mapRef.current, {
-        center: { lat: 48.8, lng: -123.5 },
-        zoom: 8,
+    loader.load().then((google) => {
+      const map = new google.maps.Map(document.getElementById('map') as HTMLElement, {
+        center: { lat: 48.5, lng: -123.3 },
+        zoom: 9,
         styles: mapStyles,
         disableDefaultUI: true,
-        zoomControl: false,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false
+        zoomControl: true
       });
 
-      mapInstanceRef.current = map;
+      mapRef.current = map;
     });
 
     return () => {
-      markersRef.current.forEach(marker => marker?.setMap(null));
-      markersRef.current = [];
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      markersRef.current.forEach(marker => marker.setMap(null));
     };
   }, []);
 
-  // Handle marker and path updates
+  // Handle markers update
   useEffect(() => {
-    if (!mapInstanceRef.current) return;
+    if (!mapRef.current || !selectedDate) return;
 
-    // Clear existing markers and paths
+    // Clear existing markers
     markersRef.current.forEach(marker => marker.setMap(null));
-    pathsRef.current.forEach(path => path.setMap(null));
     markersRef.current = [];
-    pathsRef.current = [];
 
-    if (selectedDate) {
-      const positions = findPositionsForDate(selectedDate, sightings, selectedIndividuals);
-      const currentMarkers = positions.map(({ position, matrilines }) => 
-        new window.google.maps.Marker({
-          position,
-          map: mapInstanceRef.current,
-          icon: {
-            url: matrilines.some(m => m.startsWith('T18')) 
-              ? '/images/orca-icon.png'
-              : '/images/orca-icon2.png',
-            scaledSize: new window.google.maps.Size(40, 40),
-            origin: new window.google.maps.Point(0, 0),
-            anchor: new window.google.maps.Point(20, 20)
-          },
-          title: `Whales: ${matrilines.join(', ')}`
-        })
-      );
+    const positions = findPositionsForDate(selectedDate, sightings, selectedIndividuals);
+    
+    // Create new markers
+    markersRef.current = positions.map(({ position, matrilines, isActualSighting }) => {
+      const matrilineType = getMatrilineType(matrilines);
+      const iconUrl = getIconUrl(matrilineType);
 
-      markersRef.current = currentMarkers;
+      return new google.maps.Marker({
+        position,
+        map: mapRef.current!,
+        icon: {
+          url: iconUrl,
+          scaledSize: new google.maps.Size(40, 40),
+          origin: new google.maps.Point(0, 0),
+          anchor: new google.maps.Point(20, 20)
+        },
+        title: `${matrilines.join(', ')}${!isActualSighting ? ' (Estimated)' : ''}`
+      });
+    });
+  }, [selectedDate, sightings, selectedIndividuals]);
 
-      if (showPaths) {
-        // Add path creation logic here
-        // ...
+  // Handle animation with controlled timing
+  useEffect(() => {
+    if (!isPlaying || !selectedDate || selectedIndividuals.length === 0) {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
+      return;
     }
-  }, [sightings, selectedDate, selectedIndividuals, showPaths]);
+
+    const FRAME_RATE = 1000; // Update every 1 second
+    let currentDate = new Date(selectedDate);
+
+    const animate = (timestamp: number) => {
+      if (timestamp - lastUpdateTimeRef.current >= FRAME_RATE) {
+        // Update the date
+        currentDate.setDate(currentDate.getDate() + 1);
+        
+        // Reset to earliest date if we've gone past the latest date
+        if (currentDate > new Date()) {
+          currentDate = new Date(Math.min(...sightings.map(s => new Date(s.timestamp).getTime())));
+        }
+
+        onDateChange(new Date(currentDate));
+        lastUpdateTimeRef.current = timestamp;
+      }
+
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    lastUpdateTimeRef.current = performance.now();
+    animationFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [isPlaying, selectedDate, selectedIndividuals, onDateChange, sightings]);
 
   return (
     <div 
-      ref={mapRef} 
+      id="map" 
       className="w-full h-full"
-      style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
     />
   );
 };
