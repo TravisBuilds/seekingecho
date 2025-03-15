@@ -6,6 +6,7 @@ import IndividualFilter from '@/components/Filters/IndividualFilter';
 import Timeline from '@/components/Timeline/Timeline';
 import { WhaleSighting } from '@/types/sighting';
 import { loadAllSightings } from '@/services/utils/yearlyDataLoader';
+import { findPositionsForDate } from '@/utils/positionUtils';
 
 export default function Home() {
   const [sightings, setSightings] = useState<WhaleSighting[]>([]);
@@ -13,6 +14,7 @@ export default function Home() {
   const [selectedIndividuals, setSelectedIndividuals] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isEstimated, setIsEstimated] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -37,6 +39,13 @@ export default function Home() {
       setIsPlaying(prev => !prev);
     }
   };
+
+  // Update the estimation status when positions change
+  useEffect(() => {
+    if (!selectedDate) return;
+    const positions = findPositionsForDate(selectedDate, sightings, selectedIndividuals);
+    setIsEstimated(positions.some(p => !p.isActualSighting));
+  }, [selectedDate, sightings, selectedIndividuals]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -98,6 +107,7 @@ export default function Home() {
             sightings={sightings}
             onDateChange={setSelectedDate}
             isPlaying={isPlaying}
+            isEstimated={isEstimated}
           />
         </div>
       </div>

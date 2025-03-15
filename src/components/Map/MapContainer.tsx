@@ -105,67 +105,52 @@ const findPositionsForDate = (
   date: Date,
   sightings: WhaleSighting[],
   selectedIndividuals: string[] = []
-): Array<{
-  position: { lat: number; lng: number };
-  matrilines: string[];
-  isActualSighting: boolean;
-}> => {
+): Position[] => {
   const dateStr = date.toDateString();
-  const positions = new Map<string, {
-    position: { lat: number; lng: number };
-    matrilines: string[];
-    isActualSighting: boolean;
-  }>();
+  const positions = new Map<string, Position>();
 
-  // Filter sightings for selected individuals
-  const filteredSightings = selectedIndividuals.length > 0
-    ? sightings.filter(s => {
-        return s.matrilines.some(m => selectedIndividuals.includes(m)) &&
-               isInWater(s.location.lat, s.location.lng); // Check if in water
-      })
-    : sightings.filter(s => isInWater(s.location.lat, s.location.lng)); // Check if in water
+  // Only process selected families (or both if none selected)
+  const familiesToProcess = selectedIndividuals.length > 0
+    ? [...new Set(selectedIndividuals.map(m => 
+        m.startsWith('T18') ? 'T18' : 
+        m.startsWith('T19') ? 'T19' : null
+      ).filter(Boolean) as string[])]
+    : ['T18', 'T19'];
 
   // Process exact matches first
-  const exactMatches = filteredSightings.filter(s => 
-    new Date(s.timestamp).toDateString() === dateStr
+  const exactMatches = sightings.filter(s => 
+    new Date(s.timestamp).toDateString() === dateStr &&
+    s.matrilines.some(m => 
+      familiesToProcess.some(family => m.startsWith(family)) &&
+      (selectedIndividuals.length === 0 || selectedIndividuals.includes(m))
+    )
   );
 
-  // Process exact matches first
-  exactMatches.forEach(sighting => {
-    // Only process matrilines that are selected (or all if none selected)
-    const relevantMatrilines = selectedIndividuals.length > 0
-      ? sighting.matrilines.filter(m => selectedIndividuals.includes(m))
-      : sighting.matrilines;
+  // Try to find exact matches for each family
+  familiesToProcess.forEach(family => {
+    const familyExactMatch = exactMatches.find(s => 
+      s.matrilines.some(m => m.startsWith(family)) &&
+      isInWater(s.location.lat, s.location.lng)
+    );
 
-    relevantMatrilines.forEach(matriline => {
-      const familyKey = matriline.startsWith('T18') ? 'T18' : 
-                       matriline.startsWith('T19') ? 'T19' : 'OTHER';
-
-      if (!positions.has(familyKey)) {
-        positions.set(familyKey, {
-          position: sighting.location,
-          matrilines: [matriline],
-          isActualSighting: true
-        });
-      }
-    });
+    if (familyExactMatch) {
+      positions.set(family, {
+        position: familyExactMatch.location,
+        matrilines: familyExactMatch.matrilines.filter(m => m.startsWith(family)),
+        isActualSighting: true
+      });
+    }
   });
 
-  // For interpolation, ensure all points are in water
-  const familiesToProcess = selectedIndividuals.length > 0
-    ? [...new Set(selectedIndividuals.map(m => m.startsWith('T18') ? 'T18' : 
-                                             m.startsWith('T19') ? 'T19' : 'OTHER'))]
-    : ['T18', 'T19', 'OTHER'];
-
+  // For any family without an exact match, interpolate
   familiesToProcess.forEach(family => {
     if (positions.has(family)) return;
 
-    const familySightings = filteredSightings
-      .filter(s => s.matrilines.some(m => 
-        family === 'T18' ? m.startsWith('T18') :
-        family === 'T19' ? m.startsWith('T19') :
-        (!m.startsWith('T18') && !m.startsWith('T19'))
-      ))
+    const familySightings = sightings
+      .filter(s => 
+        s.matrilines.some(m => m.startsWith(family)) &&
+        isInWater(s.location.lat, s.location.lng)
+      )
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     const prevSighting = familySightings
@@ -185,7 +170,6 @@ const findPositionsForDate = (
       
       const interpolatedPosition = points[Math.min(index, points.length - 1)];
       
-      // Only add the position if it's in water
       if (isInWater(interpolatedPosition.lat, interpolatedPosition.lng)) {
         positions.set(family, {
           position: interpolatedPosition,
@@ -212,6 +196,27 @@ const MapContainer = ({
   const animationFrameRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef<number>(0);
 
+  // Update map options to show more of Vancouver Island
+  const mapOptions: google.maps.MapOptions = {
+    center: { lat: 48.6, lng: -123.5 }, // Centered between Vancouver Island and mainland
+    zoom: 9, // Zoom out to show more area
+    styles: mapStyles,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    minZoom: 8,  // Prevent zooming out too far
+    maxZoom: 12, // Prevent zooming in too close
+    restriction: {
+      latLngBounds: {
+        north: 50.5,  // North of Vancouver Island
+        south: 47.0,  // South of Olympic Peninsula
+        west: -125.5, // West of Vancouver Island
+        east: -122.0  // East of mainland
+      },
+      strictBounds: true
+    }
+  };
+
   // Initial map setup
   useEffect(() => {
     const loader = new Loader({
@@ -220,13 +225,7 @@ const MapContainer = ({
     });
 
     loader.load().then((google) => {
-      const map = new google.maps.Map(document.getElementById('map') as HTMLElement, {
-        center: { lat: 48.5, lng: -123.3 },
-        zoom: 9,
-        styles: mapStyles,
-        disableDefaultUI: true,
-        zoomControl: true
-      });
+      const map = new google.maps.Map(document.getElementById('map') as HTMLElement, mapOptions);
 
       mapRef.current = map;
     });
@@ -251,8 +250,9 @@ const MapContainer = ({
     
     // Create new markers
     markersRef.current = positions.map(({ position, matrilines, isActualSighting }) => {
-      const matrilineType = getMatrilineType(matrilines);
-      const iconUrl = getIconUrl(matrilineType);
+      const iconUrl = matrilines.some(m => m.startsWith('T18')) ? '/images/orca-icon.png' : 
+                     matrilines.some(m => m.startsWith('T19')) ? '/images/orca-icon2.png' : 
+                     '/images/orca-icon3.png';
 
       return new google.maps.Marker({
         position,

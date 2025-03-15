@@ -7,13 +7,14 @@ import { format, eachDayOfInterval, startOfYear, endOfYear } from 'date-fns';
 
 interface TimelineProps {
   sightings: WhaleSighting[];
-  onDateChange: (date: Date | undefined) => void;
+  onDateChange: (date: Date) => void;
   isPlaying: boolean;
+  isEstimated?: boolean;
 }
 
 const PLAYBACK_INTERVAL = 250; // 4x speed (1000ms / 4)
 
-const Timeline = ({ sightings, onDateChange, isPlaying }: TimelineProps) => {
+const Timeline: React.FC<TimelineProps> = ({ sightings, onDateChange, isPlaying, isEstimated }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -91,6 +92,7 @@ const Timeline = ({ sightings, onDateChange, isPlaying }: TimelineProps) => {
       </Box>
       <div className="text-center mt-2 text-sm font-medium text-gray-600">
         {allDates[currentIndex] ? format(allDates[currentIndex], 'MMMM d, yyyy') : ''}
+        {isEstimated && " (Estimated)"}
       </div>
     </Box>
   );
