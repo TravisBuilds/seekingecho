@@ -20,11 +20,37 @@ export default function IntroPage() {
         />
       </div>
 
+      {/* Whale Image - middle layer */}
+      <div style={{ 
+        position: 'absolute',
+        left: '-20px',
+        top: '50%',
+        transform: 'translateY(-30%)',
+        width: '370px',
+        height: '370px',
+        zIndex: 1,
+        marginLeft: '-20px',
+        paddingLeft: '0'
+      }}>
+        <Image
+          src="/images/whale.png"
+          alt="Whale"
+          fill
+          priority
+          style={{ 
+            objectFit: 'contain',
+            left: '-20px',
+            marginLeft: '0',
+            paddingLeft: '0'
+          }}
+        />
+      </div>
+
       {/* Dark overlay - middle layer */}
       {/* <div className="absolute inset-0 bg-black/50 z-[5]" /> */}
 
       {/* Content Container - top layer */}
-      <div className="relative h-full" style={{ zIndex: 1 }}>
+      <div className="relative h-full" style={{ zIndex: 2 }}>
         {/* Title section at top */}
         <div style={{ 
           paddingTop: '8rem',
