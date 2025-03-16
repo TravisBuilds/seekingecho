@@ -6,6 +6,7 @@ import IndividualFilter from '@/components/Filters/IndividualFilter';
 import Timeline from '@/components/Timeline/Timeline';
 import { WhaleSighting } from '@/types/sighting';
 import { loadAllSightings } from '@/services/utils/yearlyDataLoader';
+import { findPositionsForDate } from '@/utils/positionUtils';
 
 export default function MapPage() {
   const [sightings, setSightings] = useState<WhaleSighting[]>([]);
@@ -13,6 +14,7 @@ export default function MapPage() {
   const [selectedIndividuals, setSelectedIndividuals] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isEstimated, setIsEstimated] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,6 +40,13 @@ export default function MapPage() {
     }
   };
 
+  // Update the estimation status when positions change
+  useEffect(() => {
+    if (!selectedDate) return;
+    const positions = findPositionsForDate(selectedDate, sightings, selectedIndividuals);
+    setIsEstimated(positions.some(p => !p.isActualSighting));
+  }, [selectedDate, sightings, selectedIndividuals]);
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -45,10 +54,10 @@ export default function MapPage() {
   return (
     <div 
       onClick={handleGlobalClick}
-      className="w-screen h-screen relative overflow-hidden"
+      className="map-page"
     >
       {/* Map Base Layer */}
-      <div className="absolute inset-0">
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
         <MapContainer 
           sightings={sightings}
           selectedDate={selectedDate}
@@ -61,11 +70,17 @@ export default function MapPage() {
 
       {/* UI Overlay Layer */}
       <div 
-        className="absolute inset-0 pointer-events-none"
-        onClick={e => e.stopPropagation()}
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+        onClick={e => e.stopPropagation()} // Prevent clicks on UI from triggering play/pause
       >
         {/* Whale Selector - top right */}
-        <div className="absolute top-4 right-4 pointer-events-auto z-10">
+        <div style={{ 
+          position: 'absolute', 
+          top: '1rem', 
+          right: '1rem', 
+          pointerEvents: 'auto',
+          zIndex: 1000
+        }}>
           <IndividualFilter 
             sightings={sightings}
             onFilterChange={setSelectedIndividuals}
@@ -73,11 +88,21 @@ export default function MapPage() {
         </div>
 
         {/* Timeline - bottom center */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-4/5 max-w-2xl pointer-events-auto z-10">
+        <div style={{ 
+          position: 'absolute', 
+          bottom: '2rem', 
+          left: '50%', 
+          transform: 'translateX(-50%)',
+          width: '80%',
+          maxWidth: '600px',
+          pointerEvents: 'auto',
+          zIndex: 1000
+        }}>
           <Timeline 
             sightings={sightings}
             onDateChange={setSelectedDate}
             isPlaying={isPlaying}
+            isEstimated={isEstimated}
           />
         </div>
       </div>

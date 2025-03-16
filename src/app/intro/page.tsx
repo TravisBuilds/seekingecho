@@ -2,50 +2,75 @@
 
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
 
 export default function IntroPage() {
   const router = useRouter();
 
   return (
-    <main className="min-h-screen bg-black relative overflow-hidden">
+    <div className="h-screen w-screen relative overflow-hidden intro-content">
       {/* Background Image - lowest layer */}
-      <div className="fixed inset-0" style={{ zIndex: 0, position: 'relative' }}>
+      <div className="absolute inset-0" style={{ zIndex: -1 }}>
         <Image
-          src="/images/orca-splash.png"
-          alt="Orca splash"
+          src="/images/background.png"
+          alt="Background"
           fill
-          className="object-cover"
           priority
-          sizes="100vw"
+          style={{ objectFit: 'cover', zIndex: -1 }}
           quality={100}
         />
       </div>
 
+      {/* Dark overlay - middle layer */}
+      {/* <div className="absolute inset-0 bg-black/50 z-[5]" /> */}
+
       {/* Content Container - top layer */}
-      <div className="relative min-h-screen flex flex-col items-center justify-between p-8" style={{ zIndex: 10 }}>
-        {/* Title Section */}
-        <div className="pt-12 text-center">
-          <h1 className="text-white text-4xl font-bold mb-2">
+      <div className="relative h-full" style={{ zIndex: 1 }}>
+        {/* Title section at top */}
+        <div style={{ 
+          paddingTop: '8rem',
+          paddingLeft: '2rem',
+          color: 'white'
+        }}>
+          <p className="text-5xl font-bold">
             Welcome to
+          </p>
+          <h1 className="text-10xl font-bold mt-2">
+            Seeking Echos
           </h1>
-          <h2 className="text-white text-6xl font-bold">
-            Seeking Echo
-          </h2>
         </div>
 
-        {/* Button Section */}
-        <div className="pb-16">
-          <Link href="/map">
-            <button
-              className="bg-black/80 text-white px-12 py-3 rounded-full text-xl 
-                       font-semibold hover:scale-105 transition-transform"
-            >
-              Start
-            </button>
-          </Link>
+        {/* Button container at bottom */}
+        <div style={{ 
+          position: 'absolute',
+          bottom: '4rem',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 2
+        }}>
+          <button
+            onClick={() => router.push('/map')}
+            style={{
+              backgroundColor: 'black',
+              color: 'white',
+              fontSize: '1.5rem',
+              padding: '1rem 4rem',
+              borderRadius: '9999px',
+              transition: 'all 0.3s',
+              cursor: 'pointer'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = 'black';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            Start
+          </button>
         </div>
       </div>
-    </main>
+    </div>
   );
 } 

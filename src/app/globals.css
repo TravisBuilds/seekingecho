@@ -14,20 +14,20 @@
 
 /* Basic styles */
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 255, 255, 255;
+  --foreground-rgb: 255, 255, 255;
+  --background-rgb: 0, 0, 0;
 }
 
 html, body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: white;
+
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: white;
+  color: white;
+  background: black;
   font-family: "Nunito", sans-serif;
   font-optical-sizing: auto;
   position: relative;
@@ -62,7 +62,7 @@ body {
 
 /* Style the marker labels */
 .marker-label {
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(9, 9, 9, 0.8);
   padding: 2px 6px;
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.2);
@@ -98,4 +98,18 @@ body {
 .font-nunito {
   font-family: "Nunito", sans-serif;
   font-optical-sizing: auto;
+}
+
+/* Add to your existing globals.css */
+.wave-pattern {
+  background-color: rgba(255, 255, 255, 0.1);
+  background-image: 
+    radial-gradient(circle at 100% 150%, rgba(255, 255, 255, 0.1) 24%, transparent 25%),
+    radial-gradient(circle at 0 150%, rgba(255, 255, 255, 0.1) 24%, transparent 25%);
+  background-size: 20px 40px;
+}
+
+/* Add a new class for the intro page content */
+.intro-content {
+  isolation: isolate;
 } 
