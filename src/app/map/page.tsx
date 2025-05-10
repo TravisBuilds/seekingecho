@@ -125,8 +125,17 @@ export default function MapPage() {
 
         {/* Timeline - bottom center */}
         <div 
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-4/5 max-w-2xl pointer-events-auto z-10"
+          className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-4/5 max-w-2xl pointer-events-auto z-[9999] mb-8"
           onClick={e => e.stopPropagation()}
+          style={{ 
+            minHeight: '120px',
+            backgroundColor: 'rgba(255, 255, 255, 0)',
+            backdropFilter: 'blur(0px)',
+            borderRadius: '0px',
+            padding: '30px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0)'
+          
+          }}
         >
           <Timeline 
             sightings={sightings}

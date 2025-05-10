@@ -337,12 +337,38 @@ const MapContainer = ({
     console.log('Found positions for date:', {
       date: selectedDate.toISOString(),
       count: positions.length,
-      positions: positions.map(p => ({
-        lat: p.position.lat,
-        lng: p.position.lng,
-        matrilines: p.matrilines,
-        isActual: p.isActualSighting
-      }))
+      positions: positions.map(p => {
+        // Find the corresponding sighting for additional data
+        const sighting = sightings.find(s => 
+          s.matrilines.some(m => p.matrilines.includes(m)) &&
+          new Date(s.timestamp).toDateString() === selectedDate.toDateString()
+        );
+
+        // If this is an estimated position, find the previous known sighting
+        let groupSize = sighting?.groupSize;
+        if (!p.isActualSighting && !groupSize) {
+          const prevSighting = sightings
+            .filter(s => 
+              s.matrilines.some(m => p.matrilines.includes(m)) &&
+              new Date(s.timestamp) <= selectedDate
+            )
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+          
+          groupSize = prevSighting?.groupSize || 0;
+        }
+        
+        return {
+          lat: p.position.lat,
+          lng: p.position.lng,
+          matrilines: p.matrilines,
+          isActual: p.isActualSighting,
+          // Additional data
+          groupSize: groupSize || 0,
+          timestamp: sighting?.timestamp || 'interpolated',
+          location: sighting?.location || p.position,
+          endLocation: sighting?.endLocation
+        };
+      })
     });
     
     // Create new markers with explicit error handling
@@ -362,13 +388,37 @@ const MapContainer = ({
           position
         });
 
+        // Find the corresponding sighting or use previous known group size
+        const sighting = sightings.find(s => 
+          s.matrilines.some(m => matrilines.includes(m)) &&
+          new Date(s.timestamp).toDateString() === selectedDate.toDateString()
+        );
+
+        let groupSize = sighting?.groupSize;
+        if (!isActualSighting && !groupSize) {
+          const prevSighting = sightings
+            .filter(s => 
+              s.matrilines.some(m => matrilines.includes(m)) &&
+              new Date(s.timestamp) <= selectedDate
+            )
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+          
+          groupSize = prevSighting?.groupSize || 0;
+        }
+
         // Create a basic marker first
         const marker = new google.maps.Marker({
           position,
           map: null, // Don't add to map yet
-          title: `${matrilines.join(', ')}${!isActualSighting ? ' (Estimated)' : ''}`,
+          title: `${matrilines.join(', ')}${!isActualSighting ? ' (Estimated)' : ''}\nGroup Size: ${groupSize || 0}`,
           visible: false,
-          optimized: false
+          optimized: false,
+          label: {
+            text: (groupSize || 0).toString(),
+            color: 'white',
+            fontSize: '12px',
+            fontWeight: 'bold'
+          }
         });
 
         // Load the icon first

@@ -28,6 +28,18 @@ const Timeline: React.FC<TimelineProps> = ({ sightings, onDateChange, isPlaying,
       : []
   ).current;
 
+  // Debug logs
+  useEffect(() => {
+    console.log('Timeline Debug:', {
+      sightingsLength: sightings.length,
+      allDatesLength: allDates.length,
+      currentIndex,
+      currentDate: allDates[currentIndex],
+      firstSighting: sightings[0]?.timestamp,
+      lastSighting: sightings[sightings.length - 1]?.timestamp
+    });
+  }, [sightings, allDates, currentIndex]);
+
   // Move date change to useEffect
   useEffect(() => {
     if (allDates[currentIndex]) {
@@ -62,38 +74,58 @@ const Timeline: React.FC<TimelineProps> = ({ sightings, onDateChange, isPlaying,
     };
   }, [isPlaying, allDates.length]);
 
+  // Early return if no dates
+  if (allDates.length === 0) {
+    return (
+      <Box className="w-full px-8 flex flex-col items-center">
+        <div className="text-center text-xl font-bold text-black bg-white shadow-xl rounded-xl py-3 px-8">
+          No data available
+        </div>
+      </Box>
+    );
+  }
+
   return (
-    <Box className="w-full px-16" sx={{ marginBottom: '5%' }}>
-      <Box className="relative h-6">
-        <Box className="absolute inset-x-0 bg-white/80 backdrop-blur-sm rounded-full shadow-lg h-full flex items-center">
+    <Box className="w-full px-4 flex flex-col items-center justify-center" sx={{ marginBottom: '0' }}>
+      <div 
+        className="text-center mb-4 text-2xl font-semibold text-black flex-col items-center justify-center MuiBox-root css-0"
+        style={{ display: 'block', width: 'fit-content' }}
+      >
+        <div className="whitespace-nowrap">
+          {allDates[currentIndex] ? format(allDates[currentIndex], 'MMMM d, yyyy') : 'Loading...'}
+          {isEstimated && <span className="text-gray-600 text-lg ml-2">(Estimated)</span>}
+        </div>
+      </div>
+      <Box className="relative h-5 w-full">
+        <Box className="absolute inset-x-0 bg-black/5 rounded-full h-full flex items-center">
           <Slider
             min={0}
-            max={allDates.length - 1}
+            max={Math.max(0, allDates.length - 1)}
             value={currentIndex}
             onChange={(_, value) => handleDateChange(value as number)}
+            disabled={allDates.length === 0}
             sx={{
-              padding: '4px 12px !important',
+              padding: '2px 12px !important',
               '& .MuiSlider-thumb': {
                 width: 12,
                 height: 12,
                 bgcolor: 'black',
+                '&:hover, &.Mui-focusVisible': {
+                  boxShadow: '0 0 0 8px rgba(0, 0, 0, 0.1)',
+                },
               },
               '& .MuiSlider-track': {
                 bgcolor: 'black',
                 height: 2,
               },
               '& .MuiSlider-rail': {
-                bgcolor: 'rgba(0,0,0,0.2)',
+                bgcolor: 'rgba(0, 0, 0, 0.1)',
                 height: 2,
               }
             }}
           />
         </Box>
       </Box>
-      <div className="text-center mt-2 text-sm font-medium text-gray-600">
-        {allDates[currentIndex] ? format(allDates[currentIndex], 'MMMM d, yyyy') : ''}
-        {isEstimated && " (Estimated)"}
-      </div>
     </Box>
   );
 };
