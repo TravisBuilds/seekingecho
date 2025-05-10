@@ -1,11 +1,15 @@
 import { WhaleSighting } from '@/types/sighting';
 
 export interface Position {
-  lat: number;
-  lng: number;
-  family: string;
+  position: {
+    lat: number;
+    lng: number;
+  };
+  matrilines: string[];
   isActualSighting: boolean;
 }
+
+type Family = 'T18' | 'T19';
 
 // Check if a point is in water (rough Salish Sea boundaries)
 export const isInWater = (lat: number, lng: number): boolean => {
@@ -22,45 +26,16 @@ export const isInWater = (lat: number, lng: number): boolean => {
   );
 };
 
-// Interpolate between two points, keeping path in water
-export const interpolatePoints = (
-  start: Position,
-  end: Position,
-  steps: number
-): Position[] => {
-  const points: Position[] = [];
-  
-  for (let i = 0; i <= steps; i++) {
-    const fraction = i / steps;
-    
-    // Try direct interpolation first
-    let lat = start.lat + (end.lat - start.lat) * fraction;
-    let lng = start.lng + (end.lng - start.lng) * fraction;
-    
-    // If point is not in water, try to find nearest water point
-    if (!isInWater(lat, lng)) {
-      // Add slight curve toward deeper water
-      const midPoint = {
-        lat: (start.lat + end.lat) / 2,
-        lng: (start.lng + end.lng) / 2
-      };
-      
-      // Adjust midpoint toward deeper water
-      if (midPoint.lng > -123.5) { // If too close to shore
-        midPoint.lng -= 0.2; // Move west toward deeper water
-      }
-      
-      // Recalculate interpolation with curved path
-      lat = start.lat + (2 * (midPoint.lat - start.lat) * fraction) * (1 - fraction) + 
-           (end.lat - start.lat) * fraction * fraction;
-      lng = start.lng + (2 * (midPoint.lng - start.lng) * fraction) * (1 - fraction) + 
-           (end.lng - start.lng) * fraction * fraction;
-    }
-    
-    points.push({ lat, lng, family: '', isActualSighting: false });
-  }
-  
-  return points;
+// Helper function to get all matrilines for a family
+const getMatrilinesForFamily = (sighting: WhaleSighting, family: Family): string[] => {
+  return sighting.matrilines.filter(m => m.startsWith(family));
+};
+
+// Helper function to determine family from matriline
+const getFamilyFromMatriline = (matriline: string): Family | null => {
+  if (matriline.startsWith('T18')) return 'T18';
+  if (matriline.startsWith('T19')) return 'T19';
+  return null;
 };
 
 export const findPositionsForDate = (
@@ -69,14 +44,15 @@ export const findPositionsForDate = (
   selectedIndividuals: string[] = []
 ): Position[] => {
   const dateStr = date.toDateString();
-  const positions = new Map<string, Position>();
+  const positions = new Map<Family, Position>();
 
   // Determine which families to process based on selection
-  const familiesToProcess = selectedIndividuals.length > 0
-    ? [...new Set(selectedIndividuals.map(m => 
-        m.startsWith('T18') ? 'T18' : 
-        m.startsWith('T19') ? 'T19' : null
-      ).filter(Boolean))]
+  const familiesToProcess: Family[] = selectedIndividuals.length > 0
+    ? Array.from(new Set(
+        selectedIndividuals
+          .map(getFamilyFromMatriline)
+          .filter((f): f is Family => f !== null)
+      ))
     : ['T18', 'T19'];
 
   // Try to find exact matches for selected families only
@@ -90,9 +66,11 @@ export const findPositionsForDate = (
 
     if (familyExactMatch) {
       positions.set(family, {
-        lat: familyExactMatch.location.lat,
-        lng: familyExactMatch.location.lng,
-        family,
+        position: {
+          lat: familyExactMatch.location.lat,
+          lng: familyExactMatch.location.lng
+        },
+        matrilines: getMatrilinesForFamily(familyExactMatch, family),
         isActualSighting: true
       });
     }
@@ -122,29 +100,15 @@ export const findPositionsForDate = (
       const currentTime = date.getTime();
       
       const fraction = (currentTime - prevTime) / (nextTime - prevTime);
-      const points = interpolatePoints(
-        {
-          lat: prevSighting.location.lat,
-          lng: prevSighting.location.lng,
-          family,
-          isActualSighting: true
-        },
-        {
-          lat: nextSighting.location.lat,
-          lng: nextSighting.location.lng,
-          family,
-          isActualSighting: true
-        },
-        20
-      );
-      const index = Math.floor(fraction * points.length);
       
-      const interpolatedPosition = points[Math.min(index, points.length - 1)];
+      // Calculate interpolated position
+      const lat = prevSighting.location.lat + (nextSighting.location.lat - prevSighting.location.lat) * fraction;
+      const lng = prevSighting.location.lng + (nextSighting.location.lng - prevSighting.location.lng) * fraction;
       
-      if (isInWater(interpolatedPosition.lat, interpolatedPosition.lng)) {
+      if (isInWater(lat, lng)) {
         positions.set(family, {
-          ...interpolatedPosition,
-          family,
+          position: { lat, lng },
+          matrilines: getMatrilinesForFamily(prevSighting, family),
           isActualSighting: false
         });
       }

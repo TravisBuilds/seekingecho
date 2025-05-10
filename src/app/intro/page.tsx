@@ -7,20 +7,18 @@ export default function IntroPage() {
   const router = useRouter();
 
   return (
-    <div className="h-screen w-screen relative overflow-hidden intro-content">
-      {/* Background Image - lowest layer */}
-      <div className="absolute inset-0" style={{ zIndex: -1 }}>
-        <Image
-          src="/images/background.png"
-          alt="Background"
-          fill
-          priority
-          style={{ objectFit: 'cover', zIndex: -1 }}
-          quality={100}
-        />
-      </div>
+    <div className="intro-container">
+      {/* Background overlay */}
+      <div 
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          zIndex: 1
+        }}
+      />
 
-      {/* Whale Image - middle layer */}
+      {/* Whale Image */}
       <div style={{ 
         position: 'absolute',
         left: '-20px',
@@ -46,10 +44,6 @@ export default function IntroPage() {
         />
       </div>
 
-      {/* Dark overlay - middle layer */}
-      {/* <div className="absolute inset-0 bg-black/50 z-[5]" /> */}
-
-      {/* Content Container - top layer */}
       <div className="relative h-full" style={{ zIndex: 2 }}>
         {/* Title section at top */}
         <div style={{ 
@@ -60,9 +54,12 @@ export default function IntroPage() {
           <p className="text-5xl font-bold">
             Welcome to
           </p>
-          <h1 className="text-10xl font-bold mt-2">
+          <h1 className="text-8xl font-bold mt-2">
             Seeking Echos
           </h1>
+          <p className="text-xl mt-4 max-w-2xl">
+            Explore the movements and social dynamics of the T18 and T19 Bigg's killer whale families in the Salish Sea region.
+          </p>
         </div>
 
         {/* Button container at bottom */}

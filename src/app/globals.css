@@ -22,7 +22,6 @@ html, body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-
 }
 
 body {
@@ -31,6 +30,17 @@ body {
   font-family: "Nunito", sans-serif;
   font-optical-sizing: auto;
   position: relative;
+}
+
+/* Intro page styles */
+.intro-container {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  background-image: url('/images/background.png');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
 }
 
 /* Map page specific styles */
@@ -66,16 +76,6 @@ body {
   padding: 2px 6px;
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.2);
-}
-
-/* Keep intro page styles separate */
-.intro-container {
-  width: 100vw;
-  height: 100vh;
-  position: relative;
-  background-image: url('/images/background1.png');
-  background-size: cover;
-  background-position: center;
 }
 
 /* Remove mobile viewport styles that might be causing issues */

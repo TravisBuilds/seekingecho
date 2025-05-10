@@ -1,11 +1,14 @@
-'use client';
-
 import './globals.css'
 import { Inter } from 'next/font/google'
-import { ThemeProvider } from '@mui/material/styles';
-import theme from '../theme';
+import type { Metadata } from 'next'
+import ClientLayout from './ClientLayout'
 
 const inter = Inter({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+  title: 'Whale Sightings',
+  description: 'Track and view whale sightings data',
+}
 
 export default function RootLayout({
   children,
@@ -14,10 +17,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className} style={{ margin: 0, padding: 0 }}>
-        <ThemeProvider theme={theme}>
-          {children}
-        </ThemeProvider>
+      <body className={inter.className}>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   )

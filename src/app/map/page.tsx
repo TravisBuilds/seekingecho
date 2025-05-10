@@ -1,30 +1,50 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import MapContainer from '@/components/Map/MapContainer';
 import IndividualFilter from '@/components/Filters/IndividualFilter';
 import Timeline from '@/components/Timeline/Timeline';
 import { WhaleSighting } from '@/types/sighting';
-import { loadAllSightings } from '@/services/utils/yearlyDataLoader';
 import { findPositionsForDate } from '@/utils/positionUtils';
+import { useSightings } from '@/hooks/useSightings';
 
 export default function MapPage() {
-  const [sightings, setSightings] = useState<WhaleSighting[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedIndividuals, setSelectedIndividuals] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isEstimated, setIsEstimated] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const data = await loadAllSightings();
-      setSightings(data);
-      setLoading(false);
-    };
+  // Use our new hook to fetch sightings with stable filters
+  const filters = useMemo(() => ({
+    dateRange: { start: null, end: null },
+    location: '',
+    groupSize: { min: 0, max: 100 },
+    matrilines: [],
+    showPath: true
+  }), []);
 
-    fetchData();
-  }, []);
+  const { sightings, loading, error } = useSightings(filters);
+
+  // Set initial date when sightings are loaded
+  useEffect(() => {
+    if (sightings.length > 0 && !selectedDate) {
+      const firstDate = new Date(Math.min(...sightings.map(s => new Date(s.timestamp).getTime())));
+      console.log('Setting initial date:', firstDate);
+      setSelectedDate(firstDate);
+    }
+  }, [sightings, selectedDate]);
+
+  // Debug sightings data
+  useEffect(() => {
+    console.log('Sightings loaded:', sightings.length);
+    if (sightings.length > 0) {
+      console.log('First sighting:', sightings[0]);
+      console.log('Date range:', {
+        start: new Date(Math.min(...sightings.map(s => new Date(s.timestamp).getTime()))),
+        end: new Date(Math.max(...sightings.map(s => new Date(s.timestamp).getTime())))
+      });
+    }
+  }, [sightings]);
 
   // Start autoplay when selection changes
   useEffect(() => {
@@ -42,45 +62,61 @@ export default function MapPage() {
 
   // Update the estimation status when positions change
   useEffect(() => {
-    if (!selectedDate) return;
+    if (!selectedDate || !sightings.length) return;
     const positions = findPositionsForDate(selectedDate, sightings, selectedIndividuals);
     setIsEstimated(positions.some(p => !p.isActualSighting));
   }, [selectedDate, sightings, selectedIndividuals]);
 
+  // Memoize the MapContainer to prevent unnecessary remounts
+  const mapComponent = useMemo(() => (
+    <MapContainer 
+      sightings={sightings}
+      selectedDate={selectedDate}
+      selectedIndividuals={selectedIndividuals}
+      showPaths={true}
+      isPlaying={isPlaying}
+      onDateChange={setSelectedDate}
+    />
+  ), [sightings, selectedDate, selectedIndividuals, isPlaying, setSelectedDate]);
+
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="w-screen h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="mb-2">Loading sightings data...</div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-red-500 text-center">
+          <div>Error loading data:</div>
+          <div>{error}</div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div 
+      className="fixed inset-0 w-screen h-screen"
       onClick={handleGlobalClick}
-      className="map-page"
     >
       {/* Map Base Layer */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-        <MapContainer 
-          sightings={sightings}
-          selectedDate={selectedDate}
-          selectedIndividuals={selectedIndividuals}
-          showPaths={true}
-          isPlaying={isPlaying}
-          onDateChange={setSelectedDate}
-        />
+      <div className="absolute inset-0">
+        {mapComponent}
       </div>
 
       {/* UI Overlay Layer */}
       <div 
-        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
-        onClick={e => e.stopPropagation()} // Prevent clicks on UI from triggering play/pause
+        className="absolute inset-0 pointer-events-none"
       >
         {/* Whale Selector - top right */}
-        <div style={{ 
-          position: 'absolute', 
-          top: '1rem', 
-          right: '1rem', 
-          pointerEvents: 'auto',
-          zIndex: 1000
-        }}>
+        <div className="absolute top-4 right-4 pointer-events-auto z-10" onClick={e => e.stopPropagation()}>
           <IndividualFilter 
             sightings={sightings}
             onFilterChange={setSelectedIndividuals}
@@ -88,16 +124,10 @@ export default function MapPage() {
         </div>
 
         {/* Timeline - bottom center */}
-        <div style={{ 
-          position: 'absolute', 
-          bottom: '2rem', 
-          left: '50%', 
-          transform: 'translateX(-50%)',
-          width: '80%',
-          maxWidth: '600px',
-          pointerEvents: 'auto',
-          zIndex: 1000
-        }}>
+        <div 
+          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-4/5 max-w-2xl pointer-events-auto z-10"
+          onClick={e => e.stopPropagation()}
+        >
           <Timeline 
             sightings={sightings}
             onDateChange={setSelectedDate}

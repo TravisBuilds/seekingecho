@@ -2,10 +2,10 @@
 
 /// <reference types="google.maps" />
 
-import { useEffect, useRef } from 'react';
-import { Loader } from '@googlemaps/js-api-loader';
+import { useEffect, useRef, useState } from 'react';
 import { WhaleSighting } from '@/types/sighting';
 import { mapStyles } from './mapStyles';
+import { mapsLoader } from '@/utils/maps';
 
 interface MapContainerProps {
   sightings: WhaleSighting[];
@@ -79,25 +79,22 @@ const interpolatePoints = (
 };
 
 // Add a type for valid matrilines
-type Matriline = 'T18' | 'T19' | 'OTHER';
+type Matriline = 'T18' | 'T19';
 
-// Helper function to determine matriline type
-const getMatrilineType = (matrilines: string[]): Matriline => {
-  if (matrilines.some(m => m.startsWith('T18'))) return 'T18';
-  if (matrilines.some(m => m.startsWith('T19'))) return 'T19';
-  return 'OTHER';
+// Helper function to get matriline type
+const getMatrilineType = (id: string): Matriline | null => {
+  if (id.startsWith('T18')) return 'T18';
+  if (id.startsWith('T19')) return 'T19';
+  return null;
 };
 
 // Get icon URL based on matriline type
 const getIconUrl = (matrilineType: Matriline): string => {
-  switch (matrilineType) {
-    case 'T18':
-      return '/images/orca-icon.png';
-    case 'T19':
-      return '/images/orca-icon2.png';
-    default:
-      return '/images/orca-icon3.png';
-  }
+  console.log('Getting icon for matriline:', matrilineType);
+  // Use absolute paths for icons
+  const iconPath = matrilineType === 'T18' ? '/images/orca-icon.png' : '/images/orca-icon2.png';
+  console.log('Icon path:', iconPath);
+  return iconPath;
 };
 
 // Update the findPositionsForDate function to filter out land positions
@@ -107,14 +104,15 @@ const findPositionsForDate = (
   selectedIndividuals: string[] = []
 ): Position[] => {
   const dateStr = date.toDateString();
-  const positions = new Map<string, Position>();
+  const positions = new Map<Matriline, Position>();
 
   // Only process selected families (or both if none selected)
-  const familiesToProcess = selectedIndividuals.length > 0
-    ? [...new Set(selectedIndividuals.map(m => 
-        m.startsWith('T18') ? 'T18' : 
-        m.startsWith('T19') ? 'T19' : null
-      ).filter(Boolean) as string[])]
+  const familiesToProcess: Matriline[] = selectedIndividuals.length > 0
+    ? Array.from(new Set(
+        selectedIndividuals
+          .map(getMatrilineType)
+          .filter((type): type is Matriline => type !== null)
+      ))
     : ['T18', 'T19'];
 
   // Process exact matches first
@@ -183,6 +181,13 @@ const findPositionsForDate = (
   return Array.from(positions.values());
 };
 
+// Add type declaration for Google Maps error handler
+declare global {
+  interface Window {
+    gm_authFailure?: () => void;
+  }
+}
+
 const MapContainer = ({ 
   sightings, 
   selectedDate, 
@@ -192,26 +197,32 @@ const MapContainer = ({
   onDateChange 
 }: MapContainerProps) => {
   const mapRef = useRef<google.maps.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const animationFrameRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef<number>(0);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [boundsSet, setBoundsSet] = useState(false);
 
   // Update map options to show more of Vancouver Island
   const mapOptions: google.maps.MapOptions = {
-    center: { lat: 48.6, lng: -123.5 }, // Centered between Vancouver Island and mainland
-    zoom: 9, // Zoom out to show more area
+    center: { lat: 49.5, lng: -126.0 },
+    zoom: 7,
+    mapTypeId: 'roadmap',
+    disableDefaultUI: true,
     styles: mapStyles,
     mapTypeControl: false,
     streetViewControl: false,
     fullscreenControl: false,
-    minZoom: 8,  // Prevent zooming out too far
-    maxZoom: 12, // Prevent zooming in too close
+    minZoom: 7,
+    maxZoom: 12,
     restriction: {
       latLngBounds: {
-        north: 50.5,  // North of Vancouver Island
-        south: 47.0,  // South of Olympic Peninsula
-        west: -125.5, // West of Vancouver Island
-        east: -122.0  // East of mainland
+        north: 51.0,
+        south: 47.0,
+        west: -128.0,
+        east: -122.0
       },
       strictBounds: true
     }
@@ -219,18 +230,48 @@ const MapContainer = ({
 
   // Initial map setup
   useEffect(() => {
-    const loader = new Loader({
-      apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-      version: 'weekly',
-    });
+    console.log('Starting map initialization...');
+    
+    const initMap = async () => {
+      if (!mapContainerRef.current) {
+        console.error('Map container ref is null');
+        return;
+      }
 
-    loader.load().then((google) => {
-      const map = new google.maps.Map(document.getElementById('map') as HTMLElement, mapOptions);
+      try {
+        console.log('Loading Google Maps API...');
+        const google = await mapsLoader.load();
+        console.log('Google Maps API loaded successfully');
 
-      mapRef.current = map;
-    });
+        // Create map instance
+        console.log('Creating map instance...');
+        const map = new google.maps.Map(mapContainerRef.current, mapOptions);
+
+        // Wait for the map to be ready
+        await new Promise<void>((resolve) => {
+          google.maps.event.addListenerOnce(map, 'idle', () => {
+            console.log('Map is ready');
+            mapRef.current = map;
+            setIsLoaded(true);
+            resolve();
+          });
+        });
+
+      } catch (error) {
+        const errorMsg = error instanceof Error 
+          ? `Error initializing Google Maps: ${error.message}`
+          : 'An unknown error occurred while initializing Google Maps';
+        console.error(errorMsg);
+        setError(errorMsg);
+      }
+    };
+
+    initMap();
 
     return () => {
+      if (mapRef.current) {
+        mapRef.current = null;
+      }
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -238,33 +279,133 @@ const MapContainer = ({
     };
   }, []);
 
+  // Set initial bounds based on all sightings
+  useEffect(() => {
+    if (!mapRef.current || !sightings.length || boundsSet) return;
+
+    const map = mapRef.current;
+    const bounds = new google.maps.LatLngBounds();
+
+    // Add all sighting locations to bounds
+    sightings.forEach(sighting => {
+      if (isInWater(sighting.location.lat, sighting.location.lng)) {
+        bounds.extend(sighting.location);
+      }
+      if (sighting.endLocation && isInWater(sighting.endLocation.lat, sighting.endLocation.lng)) {
+        bounds.extend(sighting.endLocation);
+      }
+    });
+
+    // Add padding to the bounds
+    const ne = bounds.getNorthEast();
+    const sw = bounds.getSouthWest();
+    const latPadding = (ne.lat() - sw.lat()) * 0.1;
+    const lngPadding = (ne.lng() - sw.lng()) * 0.1;
+    bounds.extend(new google.maps.LatLng(ne.lat() + latPadding, ne.lng() + lngPadding));
+    bounds.extend(new google.maps.LatLng(sw.lat() - latPadding, sw.lng() - lngPadding));
+
+    map.fitBounds(bounds);
+    setBoundsSet(true);
+    
+    console.log('Set initial map bounds:', bounds.toJSON());
+  }, [sightings, boundsSet]);
+
   // Handle markers update
   useEffect(() => {
-    if (!mapRef.current || !selectedDate) return;
+    if (!mapRef.current || !selectedDate) {
+      console.log('Map or date not ready for markers:', {
+        mapReady: !!mapRef.current,
+        selectedDate
+      });
+      return;
+    }
+
+    const map = mapRef.current;
+    console.log('Starting marker update with:', {
+      selectedDate: selectedDate.toISOString(),
+      selectedIndividuals,
+      sightingsCount: sightings.length
+    });
 
     // Clear existing markers
+    const markerCount = markersRef.current.length;
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
+    console.log(`Cleared ${markerCount} existing markers`);
 
     const positions = findPositionsForDate(selectedDate, sightings, selectedIndividuals);
+    console.log('Found positions for date:', {
+      date: selectedDate.toISOString(),
+      count: positions.length,
+      positions: positions.map(p => ({
+        lat: p.position.lat,
+        lng: p.position.lng,
+        matrilines: p.matrilines,
+        isActual: p.isActualSighting
+      }))
+    });
     
-    // Create new markers
+    // Create new markers with explicit error handling
     markersRef.current = positions.map(({ position, matrilines, isActualSighting }) => {
-      const iconUrl = matrilines.some(m => m.startsWith('T18')) ? '/images/orca-icon.png' : 
-                     matrilines.some(m => m.startsWith('T19')) ? '/images/orca-icon2.png' : 
-                     '/images/orca-icon3.png';
+      try {
+        const matrilineType = getMatrilineType(matrilines[0]);
+        if (!matrilineType) {
+          console.error('Invalid matriline type for:', matrilines[0]);
+          return null;
+        }
 
-      return new google.maps.Marker({
-        position,
-        map: mapRef.current!,
-        icon: {
-          url: iconUrl,
-          scaledSize: new google.maps.Size(40, 40),
-          origin: new google.maps.Point(0, 0),
-          anchor: new google.maps.Point(20, 20)
-        },
-        title: `${matrilines.join(', ')}${!isActualSighting ? ' (Estimated)' : ''}`
-      });
+        const iconUrl = getIconUrl(matrilineType);
+        console.log('Creating marker with icon:', {
+          matrilineType,
+          iconUrl,
+          matrilines,
+          position
+        });
+
+        // Create a basic marker first
+        const marker = new google.maps.Marker({
+          position,
+          map: null, // Don't add to map yet
+          title: `${matrilines.join(', ')}${!isActualSighting ? ' (Estimated)' : ''}`,
+          visible: false,
+          optimized: false
+        });
+
+        // Load the icon first
+        const img = new Image();
+        img.onload = () => {
+          // Once icon is loaded, update the marker
+          marker.setIcon({
+            url: iconUrl,
+            scaledSize: new google.maps.Size(40, 40),
+            origin: new google.maps.Point(0, 0),
+            anchor: new google.maps.Point(20, 20)
+          });
+          marker.setMap(map);
+          marker.setVisible(true);
+          console.log('Marker added to map:', {
+            position: marker.getPosition()?.toJSON(),
+            title: marker.getTitle()
+          });
+        };
+        img.onerror = (e) => {
+          console.error('Failed to load icon:', iconUrl, e);
+          // Add marker without custom icon
+          marker.setMap(map);
+          marker.setVisible(true);
+        };
+        img.src = iconUrl;
+
+        return marker;
+      } catch (error) {
+        console.error('Error creating marker:', error);
+        return null;
+      }
+    }).filter((marker): marker is google.maps.Marker => marker !== null);
+
+    console.log('Marker update complete:', {
+      totalMarkers: markersRef.current.length,
+      date: selectedDate.toISOString()
     });
   }, [selectedDate, sightings, selectedIndividuals]);
 
@@ -308,11 +449,33 @@ const MapContainer = ({
   }, [isPlaying, selectedDate, selectedIndividuals, onDateChange, sightings]);
 
   return (
-    <div 
-      id="map" 
-      className="w-full h-full"
-      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-    />
+    <div className="absolute inset-0">
+      <div 
+        ref={mapContainerRef}
+        style={{ 
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: '#f0f0f0'
+        }}
+      />
+      {!isLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-80">
+          <div className="text-center">
+            {error ? (
+              <div className="text-red-500">{error}</div>
+            ) : (
+              <div>
+                <div className="mb-2">Loading Google Maps...</div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
