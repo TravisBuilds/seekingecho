@@ -22,19 +22,56 @@ interface Position {
   isActualSighting: boolean;
 }
 
-// Check if a point is in water (rough Salish Sea boundaries)
+// Check if a point is in water (ocean areas and bays of the Salish Sea)
 const isInWater = (lat: number, lng: number): boolean => {
-  // Rough boundaries of the Salish Sea and connected waters
-  const boundaries = [
-    { minLat: 47.0, maxLat: 50.0, minLng: -125.0, maxLng: -122.0 }, // Main Salish Sea
-    { minLat: 49.0, maxLat: 49.5, minLng: -123.5, maxLng: -122.5 }, // Burrard Inlet
-    { minLat: 49.3, maxLat: 49.7, minLng: -123.5, maxLng: -123.0 }  // Howe Sound
+  // Define specific ocean areas and bays where whales can be
+  const waterAreas = [
+    // Main Salish Sea (comprehensive coverage)
+    { minLat: 47.0, maxLat: 50.5, minLng: -125.5, maxLng: -122.0,
+      name: 'Salish Sea' },
+
+    // West Coast Vancouver Island
+    { minLat: 48.0, maxLat: 50.5, minLng: -127.0, maxLng: -125.0,
+      name: 'West Coast Vancouver Island' },
+
+    // Puget Sound and Approaches
+    { minLat: 47.0, maxLat: 48.5, minLng: -123.0, maxLng: -122.0,
+      name: 'Puget Sound' },
+
+    // San Juan Islands and Gulf Islands
+    { minLat: 48.3, maxLat: 49.0, minLng: -123.3, maxLng: -122.7,
+      name: 'San Juan and Gulf Islands' },
+
+    // Northern Waters (Discovery Passage to Johnstone Strait)
+    { minLat: 49.8, maxLat: 51.0, minLng: -125.5, maxLng: -124.0,
+      name: 'Northern Waters' },
+
+    // Desolation Sound
+    { minLat: 49.8, maxLat: 50.3, minLng: -124.8, maxLng: -124.0,
+      name: 'Desolation Sound' },
+
+    // Inside Passage
+    { minLat: 50.0, maxLat: 51.0, minLng: -125.5, maxLng: -124.5,
+      name: 'Inside Passage' },
+
+    // Additional Coverage Areas
+    { minLat: 47.5, maxLat: 49.5, minLng: -127.0, maxLng: -122.0,
+      name: 'Extended Coverage' }
   ];
 
-  return boundaries.some(b => 
-    lat >= b.minLat && lat <= b.maxLat && 
-    lng >= b.minLng && lng <= b.maxLng
+  // Check if point is in any of the defined water areas
+  const matchingArea = waterAreas.find(area => 
+    lat >= area.minLat && lat <= area.maxLat && 
+    lng >= area.minLng && lng <= area.maxLng
   );
+
+  if (matchingArea) {
+    console.log('Position is in water area:', matchingArea.name);
+    return true;
+  }
+
+  console.log('Position is not in any known water area:', { lat, lng });
+  return false;
 };
 
 // Interpolate between two points, keeping path in water
@@ -54,15 +91,15 @@ const interpolatePoints = (
     
     // If point is not in water, try to find nearest water point
     if (!isInWater(lat, lng)) {
-      // Add slight curve toward deeper water
+      // Add curve toward deeper water (Strait of Georgia)
       const midPoint = {
         lat: (start.lat + end.lat) / 2,
         lng: (start.lng + end.lng) / 2
       };
       
-      // Adjust midpoint toward deeper water
-      if (midPoint.lng > -123.5) { // If too close to shore
-        midPoint.lng -= 0.2; // Move west toward deeper water
+      // Adjust midpoint toward Strait of Georgia
+      if (midPoint.lng > -123.5) {
+        midPoint.lng -= 0.2; // Move west toward strait
       }
       
       // Recalculate interpolation with curved path
@@ -117,7 +154,7 @@ const findPositionsForDate = (
 
   // Process exact matches first
   const exactMatches = sightings.filter(s => 
-    new Date(s.timestamp).toDateString() === dateStr &&
+    new Date(s.date).toDateString() === dateStr &&
     s.matrilines.some(m => 
       familiesToProcess.some(family => m.startsWith(family)) &&
       (selectedIndividuals.length === 0 || selectedIndividuals.includes(m))
@@ -128,12 +165,12 @@ const findPositionsForDate = (
   familiesToProcess.forEach(family => {
     const familyExactMatch = exactMatches.find(s => 
       s.matrilines.some(m => m.startsWith(family)) &&
-      isInWater(s.location.lat, s.location.lng)
+      s.startLocation && isInWater(s.startLocation.lat, s.startLocation.lng)
     );
 
-    if (familyExactMatch) {
+    if (familyExactMatch && familyExactMatch.startLocation) {
       positions.set(family, {
-        position: familyExactMatch.location,
+        position: familyExactMatch.startLocation,
         matrilines: familyExactMatch.matrilines.filter(m => m.startsWith(family)),
         isActualSighting: true
       });
@@ -147,23 +184,23 @@ const findPositionsForDate = (
     const familySightings = sightings
       .filter(s => 
         s.matrilines.some(m => m.startsWith(family)) &&
-        isInWater(s.location.lat, s.location.lng)
+        s.startLocation && isInWater(s.startLocation.lat, s.startLocation.lng)
       )
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     const prevSighting = familySightings
-      .filter(s => new Date(s.timestamp) <= date)
+      .filter(s => new Date(s.date) <= date)
       .pop();
     const nextSighting = familySightings
-      .find(s => new Date(s.timestamp) > date);
+      .find(s => new Date(s.date) > date);
 
-    if (prevSighting && nextSighting) {
-      const prevTime = new Date(prevSighting.timestamp).getTime();
-      const nextTime = new Date(nextSighting.timestamp).getTime();
+    if (prevSighting && nextSighting && prevSighting.startLocation && nextSighting.startLocation) {
+      const prevTime = new Date(prevSighting.date).getTime();
+      const nextTime = new Date(nextSighting.date).getTime();
       const currentTime = date.getTime();
       
       const fraction = (currentTime - prevTime) / (nextTime - prevTime);
-      const points = interpolatePoints(prevSighting.location, nextSighting.location, 20);
+      const points = interpolatePoints(prevSighting.startLocation, nextSighting.startLocation, 20);
       const index = Math.floor(fraction * points.length);
       
       const interpolatedPosition = points[Math.min(index, points.length - 1)];
@@ -179,6 +216,54 @@ const findPositionsForDate = (
   });
 
   return Array.from(positions.values());
+};
+
+// Find nearest water point using a spiral search pattern
+const findNearestWaterPoint = (lat: number, lng: number, maxAttempts: number = 20): google.maps.LatLngLiteral => {
+  if (isInWater(lat, lng)) {
+    return { lat, lng };
+  }
+
+  // Search in an expanding spiral pattern
+  const searchSteps = [0.01, 0.02, 0.05, 0.1]; // Different step sizes in degrees
+  const directions = [
+    [0, 1],   // North
+    [1, 0],   // East
+    [0, -1],  // South
+    [-1, 0],  // West
+    [1, 1],   // Northeast
+    [-1, 1],  // Northwest
+    [-1, -1], // Southwest
+    [1, -1]   // Southeast
+  ];
+
+  for (const step of searchSteps) {
+    for (const [dlat, dlng] of directions) {
+      const newLat = lat + (dlat * step);
+      const newLng = lng + (dlng * step);
+      
+      if (isInWater(newLat, newLng)) {
+        console.log('Found water point:', {
+          original: { lat, lng },
+          adjusted: { lat: newLat, lng: newLng },
+          distance: Math.sqrt(Math.pow(lat - newLat, 2) + Math.pow(lng - newLng, 2))
+        });
+        return { lat: newLat, lng: newLng };
+      }
+    }
+  }
+
+  // If no water point found, return the closest point in the Strait of Georgia
+  const straitOfGeorgia = { minLat: 48.7, maxLat: 50.0, minLng: -124.0, maxLng: -123.0 };
+  const closestLat = Math.max(straitOfGeorgia.minLat, Math.min(straitOfGeorgia.maxLat, lat));
+  const closestLng = Math.max(straitOfGeorgia.minLng, Math.min(straitOfGeorgia.maxLng, lng));
+  
+  console.log('Falling back to Strait of Georgia point:', {
+    original: { lat, lng },
+    adjusted: { lat: closestLat, lng: closestLng }
+  });
+  
+  return { lat: closestLat, lng: closestLng };
 };
 
 // Add type declaration for Google Maps error handler
@@ -288,8 +373,8 @@ const MapContainer = ({
 
     // Add all sighting locations to bounds
     sightings.forEach(sighting => {
-      if (isInWater(sighting.location.lat, sighting.location.lng)) {
-        bounds.extend(sighting.location);
+      if (sighting.startLocation && isInWater(sighting.startLocation.lat, sighting.startLocation.lng)) {
+        bounds.extend(sighting.startLocation);
       }
       if (sighting.endLocation && isInWater(sighting.endLocation.lat, sighting.endLocation.lng)) {
         bounds.extend(sighting.endLocation);
@@ -310,21 +395,45 @@ const MapContainer = ({
     console.log('Set initial map bounds:', bounds.toJSON());
   }, [sightings, boundsSet]);
 
+  // Add logging for incoming props
+  useEffect(() => {
+    console.log('MapContainer received props:', {
+      sightingsCount: sightings.length,
+      selectedDate: selectedDate?.toISOString(),
+      selectedIndividuals,
+      showPaths,
+      isPlaying,
+      sightingsSample: sightings.slice(0, 2)
+    });
+  }, [sightings, selectedDate, selectedIndividuals, showPaths, isPlaying]);
+
   // Handle markers update
   useEffect(() => {
     if (!mapRef.current || !selectedDate) {
       console.log('Map or date not ready for markers:', {
         mapReady: !!mapRef.current,
-        selectedDate
+        selectedDate,
+        sightingsAvailable: sightings.length > 0
       });
       return;
     }
 
     const map = mapRef.current;
+    
+    // Validate the date
+    let dateString;
+    try {
+      dateString = selectedDate.toISOString();
+    } catch (error) {
+      console.error('Invalid date:', selectedDate);
+      return;
+    }
+
     console.log('Starting marker update with:', {
-      selectedDate: selectedDate.toISOString(),
+      selectedDate: dateString,
       selectedIndividuals,
-      sightingsCount: sightings.length
+      sightingsCount: sightings.length,
+      sightingDates: sightings.map(s => s.date).slice(0, 5) // Show first 5 dates
     });
 
     // Clear existing markers
@@ -333,15 +442,17 @@ const MapContainer = ({
     markersRef.current = [];
     console.log(`Cleared ${markerCount} existing markers`);
 
-    const positions = findPositionsForDate(selectedDate, sightings, selectedIndividuals);
+    // Ensure we have a valid date object for comparison
+    const validDate = new Date(dateString);
+    const positions = findPositionsForDate(validDate, sightings, selectedIndividuals);
     console.log('Found positions for date:', {
-      date: selectedDate.toISOString(),
+      date: validDate.toISOString(),
       count: positions.length,
       positions: positions.map(p => {
         // Find the corresponding sighting for additional data
         const sighting = sightings.find(s => 
           s.matrilines.some(m => p.matrilines.includes(m)) &&
-          new Date(s.timestamp).toDateString() === selectedDate.toDateString()
+          new Date(s.date).toDateString() === validDate.toDateString()
         );
 
         // If this is an estimated position, find the previous known sighting
@@ -350,9 +461,9 @@ const MapContainer = ({
           const prevSighting = sightings
             .filter(s => 
               s.matrilines.some(m => p.matrilines.includes(m)) &&
-              new Date(s.timestamp) <= selectedDate
+              new Date(s.date) <= validDate
             )
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
           
           groupSize = prevSighting?.groupSize || 0;
         }
@@ -362,36 +473,43 @@ const MapContainer = ({
           lng: p.position.lng,
           matrilines: p.matrilines,
           isActual: p.isActualSighting,
+          isInWater: isInWater(p.position.lat, p.position.lng),
           // Additional data
           groupSize: groupSize || 0,
-          timestamp: sighting?.timestamp || 'interpolated',
-          location: sighting?.location || p.position,
+          date: sighting?.date || 'interpolated',
+          startLocation: sighting?.startLocation || p.position,
           endLocation: sighting?.endLocation
         };
       })
     });
     
-    // Create new markers with explicit error handling
+    // Adjust positions to ensure they're in water and create markers
     markersRef.current = positions.map(({ position, matrilines, isActualSighting }) => {
       try {
+        // Ensure position is in water
+        const adjustedPosition = isInWater(position.lat, position.lng) 
+          ? position 
+          : findNearestWaterPoint(position.lat, position.lng);
+
         const matrilineType = getMatrilineType(matrilines[0]);
         if (!matrilineType) {
           console.error('Invalid matriline type for:', matrilines[0]);
           return null;
         }
 
-        const iconUrl = getIconUrl(matrilineType);
         console.log('Creating marker with icon:', {
           matrilineType,
-          iconUrl,
+          iconUrl: getIconUrl(matrilineType),
           matrilines,
-          position
+          originalPosition: position,
+          adjustedPosition,
+          wasAdjusted: position !== adjustedPosition
         });
 
         // Find the corresponding sighting or use previous known group size
         const sighting = sightings.find(s => 
           s.matrilines.some(m => matrilines.includes(m)) &&
-          new Date(s.timestamp).toDateString() === selectedDate.toDateString()
+          new Date(s.date).toDateString() === validDate.toDateString()
         );
 
         let groupSize = sighting?.groupSize;
@@ -399,20 +517,26 @@ const MapContainer = ({
           const prevSighting = sightings
             .filter(s => 
               s.matrilines.some(m => matrilines.includes(m)) &&
-              new Date(s.timestamp) <= selectedDate
+              new Date(s.date) <= validDate
             )
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
           
           groupSize = prevSighting?.groupSize || 0;
         }
 
         // Create a basic marker first
         const marker = new google.maps.Marker({
-          position,
+          position: adjustedPosition,
           map: null, // Don't add to map yet
-          title: `${matrilines.join(', ')}${!isActualSighting ? ' (Estimated)' : ''}\nGroup Size: ${groupSize || 0}`,
+          title: `${matrilines.join(', ')}${!isActualSighting ? ' (Estimated)' : ''}\nGroup Size: ${groupSize || 0}${position !== adjustedPosition ? '\n(Adjusted to nearest water)' : ''}`,
           visible: false,
           optimized: false,
+          icon: {
+            url: getIconUrl(matrilineType),
+            scaledSize: new google.maps.Size(40, 40),
+            origin: new google.maps.Point(0, 0),
+            anchor: new google.maps.Point(20, 20)
+          },
           label: {
             text: (groupSize || 0).toString(),
             color: 'white',
@@ -421,30 +545,14 @@ const MapContainer = ({
           }
         });
 
-        // Load the icon first
-        const img = new Image();
-        img.onload = () => {
-          // Once icon is loaded, update the marker
-          marker.setIcon({
-            url: iconUrl,
-            scaledSize: new google.maps.Size(40, 40),
-            origin: new google.maps.Point(0, 0),
-            anchor: new google.maps.Point(20, 20)
-          });
-          marker.setMap(map);
-          marker.setVisible(true);
-          console.log('Marker added to map:', {
-            position: marker.getPosition()?.toJSON(),
-            title: marker.getTitle()
-          });
-        };
-        img.onerror = (e) => {
-          console.error('Failed to load icon:', iconUrl, e);
-          // Add marker without custom icon
-          marker.setMap(map);
-          marker.setVisible(true);
-        };
-        img.src = iconUrl;
+        // Add marker to map immediately
+        marker.setMap(map);
+        marker.setVisible(true);
+        console.log('Marker added to map:', {
+          position: marker.getPosition()?.toJSON(),
+          title: marker.getTitle(),
+          icon: marker.getIcon()
+        });
 
         return marker;
       } catch (error) {
@@ -455,7 +563,7 @@ const MapContainer = ({
 
     console.log('Marker update complete:', {
       totalMarkers: markersRef.current.length,
-      date: selectedDate.toISOString()
+      date: validDate.toISOString()
     });
   }, [selectedDate, sightings, selectedIndividuals]);
 
@@ -478,7 +586,7 @@ const MapContainer = ({
         
         // Reset to earliest date if we've gone past the latest date
         if (currentDate > new Date()) {
-          currentDate = new Date(Math.min(...sightings.map(s => new Date(s.timestamp).getTime())));
+          currentDate = new Date(Math.min(...sightings.map(s => new Date(s.date).getTime())));
         }
 
         onDateChange(new Date(currentDate));

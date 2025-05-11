@@ -12,23 +12,11 @@ export interface WhaleIndividual {
 
 export interface WhaleSighting {
   id: string;
-  timestamp: string;
-  location: {
-    lat: number;
-    lng: number;
-  };
-  endLocation: {
-    lat: number;
-    lng: number;
-  } | null;
-  matrilines: string[];
+  date: string;
   groupSize: number;
-  firstLocation: string;
-  endLocationName: string;
-  firstDirection: string;
-  endDirection: string;
-  firstTime: string;
-  endTime: string;
+  startLocation: LatLng | null;
+  endLocation: LatLng | null;
+  matrilines: string[];
 }
 
 export interface TimelineControls {
@@ -51,4 +39,17 @@ export interface FilterOptions {
   };
   matrilines: string[];
   showPath: boolean;
+}
+
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+export interface NewSighting {
+  date: string;
+  groupSize: number;
+  startLocation?: LatLng;
+  endLocation?: LatLng;
+  matrilines: string[];
 } 

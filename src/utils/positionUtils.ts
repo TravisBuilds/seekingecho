@@ -46,6 +46,14 @@ export const findPositionsForDate = (
   const dateStr = date.toDateString();
   const positions = new Map<Family, Position>();
 
+  console.log('findPositionsForDate called with:', {
+    date: date.toISOString(),
+    dateStr,
+    sightingsCount: sightings.length,
+    selectedIndividuals,
+    sightingDates: sightings.slice(0, 5).map(s => new Date(s.date).toISOString())
+  });
+
   // Determine which families to process based on selection
   const familiesToProcess: Family[] = selectedIndividuals.length > 0
     ? Array.from(new Set(
@@ -55,56 +63,111 @@ export const findPositionsForDate = (
       ))
     : ['T18', 'T19'];
 
+  console.log('Processing families:', {
+    familiesToProcess,
+    selectedIndividuals
+  });
+
   // Try to find exact matches for selected families only
   familiesToProcess.forEach(family => {
-    const familyExactMatch = sightings.find(s => 
-      new Date(s.timestamp).toDateString() === dateStr &&
-      s.matrilines.some(m => m.startsWith(family)) &&
-      isInWater(s.location.lat, s.location.lng) &&
-      (selectedIndividuals.length === 0 || s.matrilines.some(m => selectedIndividuals.includes(m)))
-    );
+    const familyExactMatch = sightings.find(s => {
+      const sightingDate = new Date(s.date).toDateString();
+      const hasMatchingMatriline = s.matrilines.some(m => m.startsWith(family));
+      const hasValidLocation = s.startLocation && isInWater(s.startLocation.lat, s.startLocation.lng);
+      const matchesSelection = selectedIndividuals.length === 0 || s.matrilines.some(m => selectedIndividuals.includes(m));
+      
+      console.log('Checking sighting for exact match:', {
+        family,
+        sightingDate,
+        dateMatches: sightingDate === dateStr,
+        hasMatchingMatriline,
+        hasValidLocation,
+        matchesSelection,
+        matrilines: s.matrilines
+      });
 
-    if (familyExactMatch) {
+      return sightingDate === dateStr &&
+        hasMatchingMatriline &&
+        hasValidLocation &&
+        matchesSelection;
+    });
+
+    if (familyExactMatch && familyExactMatch.startLocation) {
+      console.log('Found exact match for family:', {
+        family,
+        location: familyExactMatch.startLocation,
+        matrilines: familyExactMatch.matrilines
+      });
+
       positions.set(family, {
         position: {
-          lat: familyExactMatch.location.lat,
-          lng: familyExactMatch.location.lng
+          lat: familyExactMatch.startLocation.lat,
+          lng: familyExactMatch.startLocation.lng
         },
         matrilines: getMatrilinesForFamily(familyExactMatch, family),
         isActualSighting: true
       });
+    } else {
+      console.log('No exact match found for family:', family);
     }
   });
 
   // For any selected family without an exact match, interpolate
   familiesToProcess.forEach(family => {
-    if (positions.has(family)) return;
+    if (positions.has(family)) {
+      console.log('Skipping interpolation for family with exact match:', family);
+      return;
+    }
 
     const familySightings = sightings
       .filter(s => 
         s.matrilines.some(m => m.startsWith(family)) &&
-        isInWater(s.location.lat, s.location.lng) &&
+        s.startLocation && isInWater(s.startLocation.lat, s.startLocation.lng) &&
         (selectedIndividuals.length === 0 || s.matrilines.some(m => selectedIndividuals.includes(m)))
       )
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    console.log('Found family sightings for interpolation:', {
+      family,
+      count: familySightings.length,
+      dates: familySightings.map(s => new Date(s.date).toISOString())
+    });
 
     const prevSighting = familySightings
-      .filter(s => new Date(s.timestamp) <= date)
+      .filter(s => new Date(s.date) <= date)
       .pop();
     const nextSighting = familySightings
-      .find(s => new Date(s.timestamp) > date);
+      .find(s => new Date(s.date) > date);
 
-    if (prevSighting && nextSighting) {
-      const prevTime = new Date(prevSighting.timestamp).getTime();
-      const nextTime = new Date(nextSighting.timestamp).getTime();
+    console.log('Found surrounding sightings:', {
+      family,
+      hasPrevSighting: !!prevSighting,
+      prevDate: prevSighting ? new Date(prevSighting.date).toISOString() : null,
+      hasNextSighting: !!nextSighting,
+      nextDate: nextSighting ? new Date(nextSighting.date).toISOString() : null
+    });
+
+    if (prevSighting && nextSighting && prevSighting.startLocation && nextSighting.startLocation) {
+      const prevTime = new Date(prevSighting.date).getTime();
+      const nextTime = new Date(nextSighting.date).getTime();
       const currentTime = date.getTime();
       
       const fraction = (currentTime - prevTime) / (nextTime - prevTime);
       
       // Calculate interpolated position
-      const lat = prevSighting.location.lat + (nextSighting.location.lat - prevSighting.location.lat) * fraction;
-      const lng = prevSighting.location.lng + (nextSighting.location.lng - prevSighting.location.lng) * fraction;
+      const lat = prevSighting.startLocation.lat + 
+        (nextSighting.startLocation.lat - prevSighting.startLocation.lat) * fraction;
+      const lng = prevSighting.startLocation.lng + 
+        (nextSighting.startLocation.lng - prevSighting.startLocation.lng) * fraction;
       
+      console.log('Calculated interpolated position:', {
+        family,
+        lat,
+        lng,
+        isInWater: isInWater(lat, lng),
+        fraction
+      });
+
       if (isInWater(lat, lng)) {
         positions.set(family, {
           position: { lat, lng },
@@ -115,5 +178,11 @@ export const findPositionsForDate = (
     }
   });
 
-  return Array.from(positions.values());
+  const result = Array.from(positions.values());
+  console.log('Final positions:', {
+    count: result.length,
+    positions: result
+  });
+
+  return result;
 }; 

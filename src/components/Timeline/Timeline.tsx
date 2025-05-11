@@ -19,31 +19,64 @@ const Timeline: React.FC<TimelineProps> = ({ sightings, onDateChange, isPlaying,
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Generate dates once when sightings change
-  const allDates = useRef(
-    sightings.length > 0
-      ? eachDayOfInterval({
-          start: startOfYear(new Date(Math.min(...sightings.map(s => new Date(s.timestamp).getTime())))),
-          end: endOfYear(new Date(Math.max(...sightings.map(s => new Date(s.timestamp).getTime()))))
-        })
-      : []
-  ).current;
+  const allDates = useRef<Date[]>([]);
+
+  // Initialize dates when sightings change
+  useEffect(() => {
+    if (sightings.length === 0) {
+      console.log('No sightings available');
+      allDates.current = [];
+      return;
+    }
+
+    // Sort sightings by date
+    const sortedSightings = [...sightings].sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    const firstDate = new Date(sortedSightings[0].date);
+    const lastDate = new Date(sortedSightings[sortedSightings.length - 1].date);
+
+    console.log('Calculating date range:', {
+      firstDate: firstDate.toISOString(),
+      lastDate: lastDate.toISOString(),
+      sightingsCount: sightings.length,
+      firstSightingDate: sortedSightings[0].date,
+      lastSightingDate: sortedSightings[sortedSightings.length - 1].date
+    });
+
+    try {
+      allDates.current = eachDayOfInterval({
+        start: startOfYear(firstDate),
+        end: endOfYear(lastDate)
+      });
+    } catch (error) {
+      console.error('Error generating dates:', error);
+      allDates.current = [];
+    }
+  }, [sightings]);
 
   // Debug logs
   useEffect(() => {
     console.log('Timeline Debug:', {
       sightingsLength: sightings.length,
-      allDatesLength: allDates.length,
+      allDatesLength: allDates.current.length,
       currentIndex,
-      currentDate: allDates[currentIndex],
-      firstSighting: sightings[0]?.timestamp,
-      lastSighting: sightings[sightings.length - 1]?.timestamp
+      currentDate: allDates.current[currentIndex]?.toISOString(),
+      firstSighting: sightings[0]?.date,
+      lastSighting: sightings[sightings.length - 1]?.date,
+      sampleDates: allDates.current.slice(0, 5).map(d => d.toISOString()),
+      sampleSightings: sightings.slice(0, 2).map(s => ({
+        date: s.date,
+        parsedDate: new Date(s.date).toISOString()
+      }))
     });
   }, [sightings, allDates, currentIndex]);
 
   // Move date change to useEffect
   useEffect(() => {
-    if (allDates[currentIndex]) {
-      onDateChange(allDates[currentIndex]);
+    if (allDates.current[currentIndex]) {
+      onDateChange(allDates.current[currentIndex]);
     }
   }, [currentIndex, allDates, onDateChange]);
 
@@ -53,7 +86,7 @@ const Timeline: React.FC<TimelineProps> = ({ sightings, onDateChange, isPlaying,
 
   // Handle playback
   useEffect(() => {
-    if (!isPlaying || allDates.length === 0) {
+    if (!isPlaying || allDates.current.length === 0) {
       if (playTimeoutRef.current) {
         clearTimeout(playTimeoutRef.current);
       }
@@ -61,7 +94,7 @@ const Timeline: React.FC<TimelineProps> = ({ sightings, onDateChange, isPlaying,
     }
 
     const playStep = () => {
-      setCurrentIndex(prevIndex => (prevIndex + 1) % allDates.length);
+      setCurrentIndex(prevIndex => (prevIndex + 1) % allDates.current.length);
       playTimeoutRef.current = setTimeout(playStep, PLAYBACK_INTERVAL);
     };
 
@@ -72,10 +105,10 @@ const Timeline: React.FC<TimelineProps> = ({ sightings, onDateChange, isPlaying,
         clearTimeout(playTimeoutRef.current);
       }
     };
-  }, [isPlaying, allDates.length]);
+  }, [isPlaying, allDates]);
 
   // Early return if no dates
-  if (allDates.length === 0) {
+  if (allDates.current.length === 0) {
     return (
       <Box className="w-full px-8 flex flex-col items-center">
         <div className="text-center text-xl font-bold text-black bg-white shadow-xl rounded-xl py-3 px-8">
@@ -92,7 +125,7 @@ const Timeline: React.FC<TimelineProps> = ({ sightings, onDateChange, isPlaying,
         style={{ display: 'block', width: 'fit-content' }}
       >
         <div className="whitespace-nowrap">
-          {allDates[currentIndex] ? format(allDates[currentIndex], 'MMMM d, yyyy') : 'Loading...'}
+          {allDates.current[currentIndex] ? format(allDates.current[currentIndex], 'MMMM d, yyyy') : 'Loading...'}
           {isEstimated && <span className="text-gray-600 text-lg ml-2">(Estimated)</span>}
         </div>
       </div>
@@ -100,10 +133,10 @@ const Timeline: React.FC<TimelineProps> = ({ sightings, onDateChange, isPlaying,
         <Box className="absolute inset-x-0 bg-black/5 rounded-full h-full flex items-center">
           <Slider
             min={0}
-            max={Math.max(0, allDates.length - 1)}
+            max={Math.max(0, allDates.current.length - 1)}
             value={currentIndex}
             onChange={(_, value) => handleDateChange(value as number)}
-            disabled={allDates.length === 0}
+            disabled={allDates.current.length === 0}
             sx={{
               padding: '2px 12px !important',
               '& .MuiSlider-thumb': {
