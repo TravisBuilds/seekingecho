@@ -46,28 +46,56 @@ const SightingForm: React.FC<SightingFormProps> = ({ isOpen, onClose, onSubmit }
       }}
     >
       <div 
-        className="rounded-lg w-full max-w-sm relative p-6"
+        className="rounded-xl relative"
         style={{ 
           zIndex: 1000000,
           backgroundColor: 'rgba(33, 33, 33, 0.95)',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          width: '340px',
+          margin: 'auto',
+          marginTop: '180px',
+          padding: '24px',
+          position: 'relative',
+          borderRadius: '12px',
         }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-white">Add New Sighting</h2>
-          <button
-            onClick={onClose}
-            className="text-white hover:text-gray-300 transition-colors text-xl"
-            aria-label="Close"
-          >
-            X
-          </button>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            backgroundColor: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '16px',
+            lineHeight: 1,
+            color: '#3B82F6',
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            transition: 'opacity 0.2s',
+          }}
+          onMouseOver={(e) => e.currentTarget.style.opacity = '0.7'}
+          onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+        >
+          ✕
+        </button>
+        <div style={{ 
+          marginBottom: '20px',
+          width: '100%',
+          textAlign: 'center'
+        }}>
+          <h2 style={{ 
+            color: '#3B82F6',
+            fontSize: '1.125rem',
+            fontWeight: '600',
+            margin: '0 auto'
+          }}>Add New Sighting</h2>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Date */}
           <div>
-            <label className="block text-sm text-white mb-1">Date</label>
+            <label className="block text-sm mb-2" style={{ color: 'white' }}>Date</label>
             <input
               type="date"
               value={formData.date}
@@ -75,16 +103,16 @@ const SightingForm: React.FC<SightingFormProps> = ({ isOpen, onClose, onSubmit }
                 ...formData,
                 date: e.target.value
               })}
-              className="block w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
-              style={{ color: 'white' }}
+              className="block w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+              style={{ color: 'black' }}
               required
             />
           </div>
 
           {/* Start Location */}
           <div>
-            <label className="block text-sm text-white mb-1">Start Location (Optional)</label>
-            <div className="grid grid-cols-2 gap-2">
+            <label className="block text-sm mb-2" style={{ color: 'white' }}>Start Location (Optional)</label>
+            <div className="grid grid-cols-2 gap-3">
               <input
                 type="number"
                 step="0.000001"
@@ -94,8 +122,8 @@ const SightingForm: React.FC<SightingFormProps> = ({ isOpen, onClose, onSubmit }
                   ...formData,
                   startLocation: { ...formData.startLocation!, lat: parseFloat(e.target.value) }
                 })}
-                className="block w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500 placeholder-gray-400"
-                style={{ color: 'white' }}
+                className="block w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                style={{ color: 'black' }}
               />
               <input
                 type="number"
@@ -106,16 +134,16 @@ const SightingForm: React.FC<SightingFormProps> = ({ isOpen, onClose, onSubmit }
                   ...formData,
                   startLocation: { ...formData.startLocation!, lng: parseFloat(e.target.value) }
                 })}
-                className="block w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500 placeholder-gray-400"
-                style={{ color: 'white' }}
+                className="block w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                style={{ color: 'black' }}
               />
             </div>
           </div>
 
           {/* End Location */}
           <div>
-            <label className="block text-sm text-white mb-1">End Location (Optional)</label>
-            <div className="grid grid-cols-2 gap-2">
+            <label className="block text-sm mb-2" style={{ color: 'white' }}>End Location (Optional)</label>
+            <div className="grid grid-cols-2 gap-3">
               <input
                 type="number"
                 step="0.000001"
@@ -125,8 +153,8 @@ const SightingForm: React.FC<SightingFormProps> = ({ isOpen, onClose, onSubmit }
                   ...formData,
                   endLocation: { ...formData.endLocation!, lat: parseFloat(e.target.value) }
                 })}
-                className="block w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500 placeholder-gray-400"
-                style={{ color: 'white' }}
+                className="block w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                style={{ color: 'black' }}
               />
               <input
                 type="number"
@@ -137,15 +165,15 @@ const SightingForm: React.FC<SightingFormProps> = ({ isOpen, onClose, onSubmit }
                   ...formData,
                   endLocation: { ...formData.endLocation!, lng: parseFloat(e.target.value) }
                 })}
-                className="block w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500 placeholder-gray-400"
-                style={{ color: 'white' }}
+                className="block w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                style={{ color: 'black' }}
               />
             </div>
           </div>
 
           {/* Matrilines */}
           <div>
-            <label className="block text-sm text-white mb-1">Matriline</label>
+            <label className="block text-sm mb-2" style={{ color: 'white' }}>Matriline</label>
             <input
               type="text"
               value={formData.matrilines.join(', ')}
@@ -154,15 +182,15 @@ const SightingForm: React.FC<SightingFormProps> = ({ isOpen, onClose, onSubmit }
                 matrilines: e.target.value.split(',').map(m => m.trim()).filter(Boolean)
               })}
               placeholder="e.g., T18, T19"
-              className="block w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500 placeholder-gray-400"
-              style={{ color: 'white' }}
+              className="block w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+              style={{ color: 'black' }}
               required
             />
           </div>
 
           {/* Group Size */}
           <div>
-            <label className="block text-sm text-white mb-1">Group Size</label>
+            <label className="block text-sm mb-2" style={{ color: 'white' }}>Group Size</label>
             <input
               type="number"
               min="1"
@@ -171,17 +199,32 @@ const SightingForm: React.FC<SightingFormProps> = ({ isOpen, onClose, onSubmit }
                 ...formData,
                 groupSize: parseInt(e.target.value)
               })}
-              className="block w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
-              style={{ color: 'white' }}
+              className="block w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+              style={{ color: 'black' }}
               required
             />
           </div>
 
           {/* Submit Button */}
-          <div className="flex justify-center pt-4">
+          <div style={{ 
+            width: '100%',
+            textAlign: 'center',
+            marginTop: '16px'
+          }}>
             <button
               type="submit"
-              className="w-24 py-2 text-sm bg-gray-400 text-white rounded hover:bg-gray-500 transition-colors focus:outline-none"
+              style={{
+                width: '120px',
+                padding: '0.375rem 0',
+                fontSize: '0.875rem',
+                backgroundColor: '#3B82F6',
+                color: 'white',
+                borderRadius: '0.25rem',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+                margin: '0 auto'
+              }}
             >
               Submit
             </button>
