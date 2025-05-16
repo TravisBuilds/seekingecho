@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import MapContainer from '@/components/Map/MapContainer';
 import IndividualFilter from '@/components/Filters/IndividualFilter';
 import Timeline from '@/components/Timeline/Timeline';
-import { WhaleSighting } from '@/types/sighting';
+import { WhaleSighting, NewSighting } from '@/types/sighting';
 import { findPositionsForDate } from '@/utils/positionUtils';
 import { useSightings } from '@/hooks/useSightings';
 import SightingForm from '@/components/SightingForm/SightingForm';
@@ -28,8 +28,10 @@ export default function MapPage() {
   const { sightings, loading, error, mutate } = useSightings(filters);
 
   // Handle new sighting submission
-  const handleSightingSubmit = async (newSighting: WhaleSighting) => {
+  const handleSightingSubmit = async (newSighting: NewSighting) => {
     try {
+      console.log('Submitting new sighting:', newSighting);
+      
       // Add the new sighting to the database
       const response = await fetch('/api/sightings', {
         method: 'POST',
@@ -40,7 +42,8 @@ export default function MapPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add sighting');
+        const errorData = await response.json();
+        throw new Error(`Failed to add sighting: ${errorData.message || response.statusText}`);
       }
 
       // Refresh the sightings data
@@ -48,6 +51,7 @@ export default function MapPage() {
       
       // Show success message
       alert('Sighting added successfully!');
+      setIsFormOpen(false);
     } catch (error) {
       console.error('Error adding sighting:', error);
       alert('Failed to add sighting. Please try again.');
@@ -208,34 +212,70 @@ export default function MapPage() {
             isEstimated={isEstimated}
           />
         </div>
-
-        {/* Add Sighting FAB - bottom right */}
-        <button
-          className="fixed bottom-8 right-8 w-14 h-14 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg flex items-center justify-center pointer-events-auto z-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          onClick={() => setIsFormOpen(true)}
-        >
-          <svg
-            className="w-6 h-6 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-        </button>
       </div>
 
-      {/* Sighting Form */}
-      <SightingForm
-        isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleSightingSubmit}
-      />
+      {/* Interactive Elements Layer (outside pointer-events-none) */}
+      <div className="fixed inset-0 pointer-events-none">
+        {/* Add Sighting FAB - bottom right */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('FAB clicked, opening form...');
+            setIsFormOpen(true);
+            console.log('isFormOpen set to:', true);
+          }}
+          className="pointer-events-auto"
+          style={{ 
+            position: 'fixed',
+            bottom: '32px',
+            right: '32px',
+            width: '56px',
+            height: '56px',
+            backgroundColor: '#2563eb',
+            borderRadius: '9999px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '32px',
+            fontWeight: 'bold',
+            color: 'white',
+            boxShadow: '0 6px 12px rgba(37, 99, 235, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(37, 99, 235, 0.5)',
+            cursor: 'pointer',
+            border: 'none',
+            outline: 'none',
+            zIndex: 99999,
+            transform: 'translateY(0)',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = 'translateY(2px)';
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(37, 99, 235, 0.5)';
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 6px 12px rgba(37, 99, 235, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(37, 99, 235, 0.5)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 6px 12px rgba(37, 99, 235, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(37, 99, 235, 0.5)';
+          }}
+        >
+          +
+        </button>
+
+        {/* Sighting Form Modal */}
+        <div className="pointer-events-auto">
+          <SightingForm
+            isOpen={isFormOpen}
+            onClose={() => {
+              console.log('Closing form...');
+              setIsFormOpen(false);
+              console.log('isFormOpen set to:', false);
+            }}
+            onSubmit={handleSightingSubmit}
+          />
+        </div>
+      </div>
     </div>
   );
 } 
