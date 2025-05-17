@@ -1,42 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { WhaleSighting, FilterOptions } from '@/types/sighting';
-import { supabase } from '@/utils/supabase';
-import { Database } from '@/types/supabase';
 import useSWR from 'swr';
-
-type DbSighting = Database['public']['Tables']['sightings']['Row'];
-type DbWhale = Database['public']['Tables']['whales']['Row'];
-type DbSightingWhale = Database['public']['Tables']['sighting_whales']['Row'];
-
-type SightingWithWhales = DbSighting & {
-  sighting_whales: Array<DbSightingWhale & {
-    whales: DbWhale | null;
-  }> | null;
-};
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-const fetchWithRetry = async <T,>(
-  operation: () => Promise<T>,
-  retries = 3,
-  baseDelay = 1000
-): Promise<T> => {
-  let lastError: any;
-  
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error;
-      // Exponential backoff
-      await delay(baseDelay * Math.pow(2, i));
-    }
-  }
-  
-  throw lastError;
-};
 
 interface SightingsFilter {
   dateRange: { start: Date | null; end: Date | null };
@@ -77,7 +42,7 @@ const fetcher = async (url: string) => {
   }
 };
 
-export function useSightings(filters: SightingsFilter) {
+export function useWhaleData(filters: SightingsFilter) {
   const { data, error, mutate } = useSWR<WhaleSighting[]>('/api/sightings', fetcher, {
     onError: (err) => {
       console.error('SWR error:', err);

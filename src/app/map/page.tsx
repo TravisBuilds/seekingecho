@@ -6,7 +6,7 @@ import IndividualFilter from '@/components/Filters/IndividualFilter';
 import Timeline from '@/components/Timeline/Timeline';
 import { WhaleSighting, NewSighting } from '@/types/sighting';
 import { findPositionsForDate } from '@/utils/positionUtils';
-import { useSightings } from '@/hooks/useSightings';
+import { useWhaleData } from '@/hooks/useWhaleData';
 import SightingForm from '@/components/SightingForm/SightingForm';
 
 export default function MapPage() {
@@ -25,7 +25,7 @@ export default function MapPage() {
     showPath: true
   }), []);
 
-  const { sightings, loading, error, mutate } = useSightings(filters);
+  const { sightings, loading, error, mutate } = useWhaleData(filters);
 
   // Handle new sighting submission
   const handleSightingSubmit = async (newSighting: NewSighting) => {
