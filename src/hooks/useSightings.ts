@@ -92,36 +92,8 @@ export function useSightings(filters: SightingsFilter) {
     }
   });
 
-  const sightings = data || [];
-  
-  // Transform the data to match our WhaleSighting type
-  const transformedSightings: WhaleSighting[] = (sightings as SightingWithWhales[])
-    .map((sighting) => {
-      const matrilines = sighting.sighting_whales
-        ?.map(sw => {
-          console.log('Processing whale:', sw);
-          return sw.whales?.matriline_id;
-        })
-        .filter((id): id is string => id !== undefined);
-
-      return {
-        id: sighting.id,
-        date: sighting.date,
-        groupSize: sighting.min_group_size || 0,
-        startLocation: {
-          lat: sighting.first_sighting_latitude || 0,
-          lng: sighting.first_sighting_longitude || 0
-        },
-        endLocation: sighting.end_sighting_latitude && sighting.end_sighting_longitude ? {
-          lat: sighting.end_sighting_latitude,
-          lng: sighting.end_sighting_longitude
-        } : null,
-        matrilines: matrilines || []
-      };
-    });
-
   return {
-    sightings: transformedSightings,
+    sightings: data || [],
     loading: !error && !data,
     error: error?.message || null,
     mutate
