@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import MapContainer from '@/components/Map/MapContainer';
+import { CircularProgress } from '@mui/material';
 import IndividualFilter from '@/components/Filters/IndividualFilter';
 import Timeline from '@/components/Timeline/Timeline';
+import MapContainer from '@/components/Map/MapContainer';
 import { WhaleSighting, NewSighting } from '@/types/sighting';
 import { findPositionsForDate } from '@/utils/positionUtils';
 import { useWhaleData } from '@/hooks/useWhaleData';
@@ -127,33 +128,12 @@ export default function MapPage() {
     setIsEstimated(positions.some(p => !p.isActualSighting));
   }, [selectedDate, sightings, selectedIndividuals]);
 
-  // Memoize the MapContainer to prevent unnecessary remounts
-  const mapComponent = useMemo(() => {
-    console.log('Rendering MapContainer with:', {
-      sightingsCount: sightings.length,
-      selectedDate: selectedDate?.toISOString(),
-      selectedIndividuals,
-      isPlaying
-    });
-
-    return (
-      <MapContainer 
-        sightings={sightings}
-        selectedDate={selectedDate}
-        selectedIndividuals={selectedIndividuals}
-        showPaths={true}
-        isPlaying={isPlaying}
-        onDateChange={setSelectedDate}
-      />
-    );
-  }, [sightings, selectedDate, selectedIndividuals, isPlaying, setSelectedDate]);
-
   if (loading) {
     return (
       <div className="w-screen h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
           <div className="mb-2">Loading sightings data...</div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <CircularProgress />
         </div>
       </div>
     );
@@ -177,7 +157,14 @@ export default function MapPage() {
     >
       {/* Map Base Layer */}
       <div className="absolute inset-0">
-        {mapComponent}
+        <MapContainer 
+          sightings={sightings}
+          selectedDate={selectedDate}
+          selectedIndividuals={selectedIndividuals}
+          showPaths={true}
+          isPlaying={isPlaying}
+          onDateChange={setSelectedDate}
+        />
       </div>
 
       {/* UI Overlay Layer */}

@@ -1,7 +1,13 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 import type { Metadata } from 'next'
-import ClientLayout from './ClientLayout'
+import ClientLayout from '@/app/ClientLayout'
+
+// Force optimization settings
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+// This ensures fresh builds
+export const revalidate = 0
 
 const inter = Inter({ subsets: ['latin'] })
 

@@ -1,13 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
-import * as fs from 'fs'
-import { parse } from 'csv-parse'
-import * as path from 'path'
-import * as dotenv from 'dotenv'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const { createClient } = require('@supabase/supabase-js')
+const fs = require('fs')
+const { parse } = require('csv-parse')
+const path = require('path')
+const dotenv = require('dotenv')
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
@@ -47,7 +42,7 @@ async function importSightings() {
         columns: true,
         skip_empty_lines: true,
         trim: true
-      }, (err, records) => {
+      }, (err: Error | null, records: SightingRecord[]) => {
         if (err) reject(err)
         else resolve(records)
       })
