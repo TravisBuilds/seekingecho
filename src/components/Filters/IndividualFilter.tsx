@@ -54,10 +54,11 @@ const IndividualFilter = ({ sightings, onFilterChange }: IndividualFilterProps) 
           <Box sx={{ 
             display: 'flex', 
             alignItems: 'center',
-            gap: 1
+            gap: 1,
+            color: '#000000'
           }}>
             {getIcon(value as string)}
-            <span>{value === "" ? "All Whales" : value}</span>
+            <span style={{ color: '#000000' }}>{value === "" ? "All Whales" : value}</span>
           </Box>
         )}
         sx={{
@@ -66,6 +67,7 @@ const IndividualFilter = ({ sightings, onFilterChange }: IndividualFilterProps) 
           minWidth: 200,
           height: 48,
           boxShadow: 3,
+          color: '#000000',
           '.MuiOutlinedInput-notchedOutline': { 
             borderRadius: '50px',
             borderColor: 'transparent'
@@ -81,7 +83,8 @@ const IndividualFilter = ({ sightings, onFilterChange }: IndividualFilterProps) 
             alignItems: 'center',
             gap: 1,
             py: 1.5,
-            px: 2
+            px: 2,
+            color: '#000000'
           }
         }}
         MenuProps={{
@@ -89,26 +92,33 @@ const IndividualFilter = ({ sightings, onFilterChange }: IndividualFilterProps) 
             sx: {
               borderRadius: 3,
               mt: 1,
-              boxShadow: 3
+              boxShadow: 3,
+              backgroundColor: '#FFFFFF',
+              '.MuiMenuItem-root': {
+                backgroundColor: '#FFFFFF',
+                '&:hover': {
+                  backgroundColor: '#F5F5F5'
+                }
+              }
             }
           }
         }}
       >
         <MenuItem value="">
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#000000' }}>
             <WavesRounded />
-            <span>All Whales</span>
+            <span style={{ color: '#000000' }}>All Whales</span>
           </Box>
         </MenuItem>
         {uniqueMatrilines.map(matriline => (
           <MenuItem 
             key={matriline} 
             value={matriline}
-            sx={{ py: 1.5, px: 2 }}
+            sx={{ py: 1.5, px: 2, color: '#000000' }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {getIcon(matriline)}
-              <span>{matriline}</span>
+              <span style={{ color: '#000000' }}>{matriline}</span>
             </Box>
           </MenuItem>
         ))}

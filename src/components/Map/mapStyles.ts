@@ -8,11 +8,44 @@ export const mapStyles = [
     ]
   },
   {
+    // Water labels
+    featureType: 'water',
+    elementType: 'labels.text.fill',
+    stylers: [
+      { color: '#000000' }  // Black text fill
+    ]
+  },
+  {
+    featureType: 'water',
+    elementType: 'labels.text.stroke',
+    stylers: [
+      { color: '#FFFFFF' },  // White outline
+      { weight: 3 }  // Thicker outline
+    ]
+  },
+  {
     // Land styling
     featureType: 'landscape',
     elementType: 'geometry',
     stylers: [
       { color: '#f5f5f5' }  // Light gray land
+    ]
+  },
+  {
+    // Land labels fill
+    featureType: 'landscape',
+    elementType: 'labels.text.fill',
+    stylers: [
+      { color: '#000000' }  // Black text fill
+    ]
+  },
+  {
+    // Land labels stroke
+    featureType: 'landscape',
+    elementType: 'labels.text.stroke',
+    stylers: [
+      { color: '#FFFFFF' },  // White outline
+      { weight: 3 }  // Thicker outline
     ]
   },
   {
@@ -27,7 +60,7 @@ export const mapStyles = [
     elementType: 'geometry',
     stylers: [
       { visibility: 'simplified' },
-      { color: '#ffffff' }
+      { color: '#ffffff' }  // White roads
     ]
   },
   {
@@ -40,5 +73,22 @@ export const mapStyles = [
     featureType: 'administrative',
     elementType: 'geometry',
     stylers: [{ visibility: 'simplified' }]
+  },
+  {
+    // Administrative labels fill
+    featureType: 'administrative',
+    elementType: 'labels.text.fill',
+    stylers: [
+      { color: '#000000' }  // Black text fill
+    ]
+  },
+  {
+    // Administrative labels stroke
+    featureType: 'administrative',
+    elementType: 'labels.text.stroke',
+    stylers: [
+      { color: '#FFFFFF' },  // White outline
+      { weight: 3 }  // Thicker outline
+    ]
   }
 ]; 
