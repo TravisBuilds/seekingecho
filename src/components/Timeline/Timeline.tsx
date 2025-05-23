@@ -121,16 +121,27 @@ const Timeline: React.FC<TimelineProps> = ({ sightings, onDateChange, isPlaying,
   return (
     <Box className="w-full px-4 flex flex-col items-center justify-center" sx={{ marginBottom: '0' }}>
       <div 
-        className="text-center mb-4 text-2xl font-semibold flex-col items-center justify-center MuiBox-root css-0"
+        className="text-center mb-4 text-2xl flex-col items-center justify-center MuiBox-root css-0"
         style={{ 
           display: 'block', 
           width: 'fit-content',
-          color: '#000000'  // Force black color with inline style
+          color: '#000000',  // Force black color
+          fontWeight: 800    // Increased from 600 (2x bolder)
         }}
       >
-        <div className="whitespace-nowrap" style={{ color: '#000000' }}>
+        <div className="whitespace-nowrap" style={{ color: '#000000', fontWeight: 800 }}>
           {allDates.current[currentIndex] ? format(allDates.current[currentIndex], 'MMMM d, yyyy') : 'Loading...'}
-          {isEstimated && <span className="text-gray-600 text-lg ml-2" style={{ color: '#666666' }}>(Estimated)</span>}
+          {isEstimated && (
+            <span 
+              className="text-gray-600 text-lg ml-2" 
+              style={{ 
+                color: '#666666',
+                fontWeight: 800  // Also make the "Estimated" text bolder
+              }}
+            >
+              (Estimated)
+            </span>
+          )}
         </div>
       </div>
       <Box className="relative h-5 w-full">
